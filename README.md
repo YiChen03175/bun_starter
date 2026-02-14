@@ -21,7 +21,7 @@ bun install
 cp .env.example .env
 ```
 
-Edit `.env` and fill in your values. See the [Database](#database) section below for details.
+Edit `.env` and fill in your values. Required variables include `DATABASE_URL`, `BETTER_AUTH_SECRET`, and `BETTER_AUTH_URL`. OAuth provider credentials (`GOOGLE_CLIENT_ID`, `GITHUB_CLIENT_ID`, etc.) are optional. See the [Database](#database) section below for details.
 
 3. **Start the development server**
 
@@ -38,6 +38,8 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 - **API**: [Elysia](https://elysiajs.com/) (runs inside Next.js API routes)
 - **API Client**: [Eden treaty](https://elysiajs.com/eden/overview) (type-safe, auto-inferred from Elysia)
 - **Database**: [Neon](https://neon.tech/) (serverless Postgres) via [Drizzle ORM](https://orm.drizzle.team/); local dev uses `postgres.js` direct TCP
+- **Auth**: [Better Auth](https://www.better-auth.com/) (email/password + Google/GitHub OAuth)
+- **Env Validation**: [@t3-oss/env-nextjs](https://env.t3.gg/) + Zod
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + [Shadcn UI](https://ui.shadcn.com/)
 - **Linting/Formatting**: [Biome](https://biomejs.dev/) (no ESLint/Prettier)
 - **Testing**: `bun:test` + [Testing Library](https://testing-library.com/) + [happy-dom](https://github.com/nicedoc/happy-dom)
@@ -53,16 +55,22 @@ src/
 │       ├── page.tsx            # Route page (server component shell)
 │       └── _components/        # Page-specific client components
 ├── components/ui/              # Shadcn UI components
+├── env.ts                      # Validated env vars (@t3-oss/env-nextjs + Zod)
 ├── lib/
+│   ├── auth-client.ts          # Better Auth React client (signIn, signUp, signOut, useSession)
 │   ├── eden.ts                 # Eden treaty client (use this for API calls)
 │   └── utils.ts                # Shadcn cn() helper
+├── proxy.ts                    # Next.js middleware (auth redirects)
 └── server/
+    ├── auth.ts                  # Better Auth server instance
     ├── db/
     │   ├── index.ts            # Drizzle + Neon connection
     │   └── schema.ts           # Database schema (single source of truth)
     ├── errors/
     │   ├── http.ts             # Custom error classes (ForbiddenError, ConflictError)
     │   └── index.ts            # Error handler Elysia plugin + re-exports
+    ├── plugins/
+    │   └── auth.ts              # Elysia auth plugin (mount + auth macro)
     ├── modules/<feature>/
     │   ├── index.ts            # Controller (Elysia instance with routes)
     │   ├── service.ts          # Business logic
@@ -73,6 +81,7 @@ test/
 ├── setup/                      # Preload scripts (happy-dom, jest-dom)
 ├── helpers/
 │   ├── elysia.ts               # createTestClient() for controller tests
+│   ├── mock-auth.ts            # Mocks auth for controller tests with auth
 │   └── mock-db.ts              # Drizzle mock via Proxy + setQueryResult()
 ├── fixtures/                   # Shared mock data
 ├── server/modules/<feature>/   # Backend tests (controller + service)

@@ -5,6 +5,7 @@ export const mockSelectTodo: SelectTodo = {
   id: 1,
   title: "Buy milk",
   completed: false,
+  userId: "test-user-id",
   createdAt: new Date("2025-01-01"),
   updatedAt: new Date("2025-01-01"),
 };
@@ -13,6 +14,7 @@ export const completedSelectTodo: SelectTodo = {
   id: 2,
   title: "Walk dog",
   completed: true,
+  userId: "test-user-id",
   createdAt: new Date("2025-01-01"),
   updatedAt: new Date("2025-01-02"),
 };

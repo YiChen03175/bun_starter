@@ -1,22 +1,34 @@
 import { Elysia } from "elysia";
+import { betterAuthPlugin } from "@/server/plugins/auth";
 import { TodoModel } from "./model";
 import { TodoService } from "./service";
 
 export const todoController = new Elysia({ prefix: "/todos" })
   .use(TodoModel)
-  .get("/", () => TodoService.list())
+  .use(betterAuthPlugin)
+  .get("/", ({ user }) => TodoService.list(user.id), { auth: true })
   .post(
     "/",
-    async ({ body, set }) => {
+    async ({ body, set, user }) => {
       set.status = 201;
-      return TodoService.create(body.title);
+      return TodoService.create(body.title, user.id);
     },
-    { body: "todo.create" },
+    { body: "todo.create", auth: true },
   )
-  .put("/:id", ({ params, body }) => TodoService.update(params.id, body), {
-    params: "todo.id",
-    body: "todo.update",
-  })
-  .delete("/:id", ({ params }) => TodoService.remove(params.id), {
-    params: "todo.id",
-  });
+  .put(
+    "/:id",
+    ({ params, body, user }) => TodoService.update(params.id, body, user.id),
+    {
+      params: "todo.id",
+      body: "todo.update",
+      auth: true,
+    },
+  )
+  .delete(
+    "/:id",
+    ({ params, user }) => TodoService.remove(params.id, user.id),
+    {
+      params: "todo.id",
+      auth: true,
+    },
+  );

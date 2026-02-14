@@ -1,4 +1,5 @@
 import { treaty } from "@elysiajs/eden";
+import { env } from "@/env";
 import type { App } from "@/server";
 
 // Eden is used in client components only. The server-side fallback
@@ -6,5 +7,5 @@ import type { App } from "@/server";
 export const api = treaty<App>(
   typeof window !== "undefined"
     ? window.location.origin
-    : process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+    : env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
 );

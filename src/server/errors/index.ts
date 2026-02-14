@@ -1,10 +1,10 @@
 import { Elysia } from "elysia";
-import { logger } from "../logger";
-import { ConflictError, ForbiddenError } from "./http";
+import { logger } from "@/server/logger";
+import { ConflictError, ForbiddenError, UnauthorizedError } from "./http";
 
 export const errorHandler = new Elysia({ name: "Error.Handler" })
-  .error({ ConflictError, ForbiddenError })
-  .onError(({ code, error, set }) => {
+  .error({ UnauthorizedError, ConflictError, ForbiddenError })
+  .onError({ as: "scoped" }, ({ code, error, set }) => {
     switch (code) {
       case "NOT_FOUND":
         set.status = 404;
@@ -12,6 +12,9 @@ export const errorHandler = new Elysia({ name: "Error.Handler" })
       case "VALIDATION":
         set.status = 422;
         return { error: "Validation failed" };
+      case "UnauthorizedError":
+        set.status = 401;
+        return { error: error.message };
       case "ConflictError":
         set.status = 409;
         return { error: error.message };
@@ -25,4 +28,4 @@ export const errorHandler = new Elysia({ name: "Error.Handler" })
     }
   });
 
-export { ConflictError, ForbiddenError } from "./http";
+export { ConflictError, ForbiddenError, UnauthorizedError } from "./http";

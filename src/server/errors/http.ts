@@ -1,3 +1,10 @@
+export class UnauthorizedError extends Error {
+  readonly status = 401;
+  constructor(message = "Unauthorized") {
+    super(message);
+  }
+}
+
 export class ForbiddenError extends Error {
   readonly status = 403;
   constructor(message = "Forbidden") {

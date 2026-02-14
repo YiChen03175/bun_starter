@@ -1,23 +1,24 @@
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
+import { env } from "@/env";
 import * as schema from "./schema";
 
 type Database = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 let _db: Database | null = null;
 
+// Uses require() intentionally — the sync Proxy pattern depends on synchronous
+// module loading. Bun supports require() natively, and switching to async import()
+// would break Drizzle's chainable query builder API (e.g. db.select().from().where()).
 function createDb(): Database {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) throw new Error("DATABASE_URL is not set");
-
-  if (process.env.NEON_LOCAL === "true") {
+  if (env.NEON_LOCAL) {
     const postgres = require("postgres");
     const { drizzle } = require("drizzle-orm/postgres-js");
-    return drizzle({ client: postgres(databaseUrl), schema });
+    return drizzle({ client: postgres(env.DATABASE_URL), schema });
   }
 
   const { neon } = require("@neondatabase/serverless");
   const { drizzle } = require("drizzle-orm/neon-http");
-  return drizzle({ client: neon(databaseUrl), schema });
+  return drizzle({ client: neon(env.DATABASE_URL), schema });
 }
 
 export function getDb(): Database {

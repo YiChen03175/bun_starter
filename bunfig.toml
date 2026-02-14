@@ -3,3 +3,12 @@ preload = [
   "./test/setup/happy-dom.ts",
   "./test/setup/testing-library.ts",
 ]
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = [
+  "src/components/ui/**",
+  "src/env.ts",
+  "src/server/db/schema.ts",
+  "test/setup/**",
+  "test/helpers/**",
+  "test/fixtures/**",
+]

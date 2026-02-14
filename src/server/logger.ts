@@ -1,12 +1,13 @@
 import { createPinoLogger } from "@bogeychan/elysia-logger";
 import type { LoggerOptions } from "pino";
+import { env } from "@/env";
 
-const isDev = process.env.NODE_ENV === "development";
+const isLocal = env.NODE_ENV === "development";
 
 function createLoggerConfig(): LoggerOptions {
-  const level = process.env.LOG_LEVEL;
+  const level = env.LOG_LEVEL;
 
-  if (isDev) {
+  if (isLocal) {
     return {
       level: level ?? "debug",
       transport: {
