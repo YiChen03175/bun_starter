@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 
 export interface TodoItemProps {
   todo: {
@@ -21,7 +22,10 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
         onCheckedChange={() => onToggle(todo.id, todo.completed)}
       />
       <span
-        className={`flex-1 ${todo.completed ? "text-muted-foreground line-through" : ""}`}
+        className={cn(
+          "flex-1",
+          todo.completed && "text-muted-foreground line-through",
+        )}
       >
         {todo.title}
       </span>

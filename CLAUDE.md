@@ -52,6 +52,9 @@ src/
     ├── db/
     │   ├── index.ts            # Drizzle + Neon connection
     │   └── schema.ts           # Database schema (single source of truth)
+    ├── errors/
+    │   ├── http.ts             # Custom error classes (ForbiddenError, ConflictError)
+    │   └── index.ts            # Error handler Elysia plugin + re-exports
     ├── modules/<feature>/
     │   ├── index.ts            # Controller (Elysia instance with routes)
     │   ├── service.ts          # Business logic
@@ -78,8 +81,23 @@ test/
 - **Model**: Define validation schemas with `Elysia.t`, register via `.model()` on a named Elysia plugin
 - **Service**: Business logic — no HTTP context dependency
 - **Controller**: Elysia instance as controller, inject models via `.use()`, compose into root app
+- **HTTP status codes**: Use proper code (e.g. `201` for resource creation, `404` for not found) — don't default everything to 200
 - Use `Elysia.t` as single source of truth for types (not separate interfaces)
 - Name plugins (`{ name: "Feature.Model" }`) to enable deduplication
+
+### Error Handling
+
+#### Backend
+- Error handler plugin at `src/server/errors/` — registered via `.use(errorHandler)` in root app
+- Custom error classes in `src/server/errors/http.ts` — extend `Error` with a `status` property
+- Register custom errors via `.error()` for type narrowing in `.onError()`
+- Services throw `NotFoundError` (from Elysia) or custom errors from `src/server/errors/http.ts`
+- Adding a new error: define class in `http.ts`, register in `errors/index.ts`, handle in the `switch`
+
+#### Frontend
+- `src/app/error.tsx` — root error boundary for uncaught rendering errors
+- `src/app/not-found.tsx` — root 404 page for unmatched routes
+- Client components: check Eden `{ data, error }` responses, show error state in UI
 
 ### Database
 - Schema defined in `src/server/db/schema.ts` using Drizzle `pgTable`
@@ -117,14 +135,24 @@ test/
 ### Frontend
 - Eden client at `src/lib/eden.ts` — all API calls are fully type-safe
 - **Server components by default** — only add `"use client"` where interactivity is needed
+- **Error handling**: Always check Eden `{ data, error }` responses; show error state in UI
+- **Async operations**: `"use client"` components should handle loading/disabled states (e.g., `submitting` state in forms)
+- Use `cn()` from `@/lib/utils` for conditional classNames (not template literal concatenation)
 - **`_components/` convention** — colocate page-specific components in a private folder next to the page
 - Use `bunx --bun shadcn@latest add <component>` to add new Shadcn components
 - Biome handles formatting and linting — run `bun run lint:fix` before committing
 
+## React 19 Type Guidelines
+- **Event types**: Use specific event types — `FormEvent` is deprecated. Use `SubmitEvent` (form submit), `ChangeEvent` (input change), `InputEvent` (input event), or `SyntheticEvent` (generic)
+- **Refs**: Use `Ref<T>` (not `LegacyRef`), `ComponentRef<C>` (not `ElementRef`), `RefObject<T>` (not `MutableRefObject`)
+- **Keyboard events**: Use `onKeyDown`/`onKeyUp` — `onKeyPress` is deprecated. Use `e.key` instead of `e.keyCode`/`e.charCode`
+- **No `propTypes`**: Rely on TypeScript for type checking — `propTypes` property is deprecated
+
 ### Testing
 - **Framework**: `bun:test` with happy-dom for DOM simulation
 - **Backend tests**: Use `createTestClient()` from `test/helpers/elysia.ts` for controller tests; mock services via `bun:test` `mock.module()`; mock DB via `test/helpers/mock-db.ts` for service tests
-- **Frontend tests**: React Testing Library for component tests
+- **Frontend tests**: React Testing Library + `userEvent` for component tests
+- **Coverage**: Write tests for both happy path and error cases (e.g., not-found returning 404); mock services conditionally (e.g., throw `NotFoundError` for specific IDs) to test error paths through controllers
 - **Test location**: Mirror source structure under `test/` (e.g., `test/server/modules/todo/`)
 - **Preload scripts**: Configured in `bunfig.toml` — happy-dom globals (with native Request preservation), jest-dom matchers
 - **Helpers** (`test/helpers/`): `elysia.ts` (test client for Elysia `.handle()`), `mock-db.ts` (Drizzle mock with `setQueryResult()`)

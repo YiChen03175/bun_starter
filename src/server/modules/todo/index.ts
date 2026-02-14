@@ -5,9 +5,14 @@ import { TodoService } from "./service";
 export const todoController = new Elysia({ prefix: "/todos" })
   .use(TodoModel)
   .get("/", () => TodoService.list())
-  .post("/", ({ body }) => TodoService.create(body.title), {
-    body: "todo.create",
-  })
+  .post(
+    "/",
+    async ({ body, set }) => {
+      set.status = 201;
+      return TodoService.create(body.title);
+    },
+    { body: "todo.create" },
+  )
   .put("/:id", ({ params, body }) => TodoService.update(params.id, body), {
     params: "todo.id",
     body: "todo.update",

@@ -31,6 +31,54 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) to see the app.
 
+## Stack
+
+- **Runtime**: [Bun](https://bun.sh/)
+- **Framework**: [Next.js](https://nextjs.org/) (App Router + Turbopack)
+- **API**: [Elysia](https://elysiajs.com/) (runs inside Next.js API routes)
+- **API Client**: [Eden treaty](https://elysiajs.com/eden/overview) (type-safe, auto-inferred from Elysia)
+- **Database**: [Neon](https://neon.tech/) (serverless Postgres) via [Drizzle ORM](https://orm.drizzle.team/); local dev uses `postgres.js` direct TCP
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + [Shadcn UI](https://ui.shadcn.com/)
+- **Linting/Formatting**: [Biome](https://biomejs.dev/) (no ESLint/Prettier)
+- **Testing**: `bun:test` + [Testing Library](https://testing-library.com/) + [happy-dom](https://github.com/nicedoc/happy-dom)
+
+## Project Structure
+
+```
+src/
+├── app/                        # Next.js App Router pages
+│   ├── api/[[...slugs]]/       # Elysia catch-all API route
+│   ├── page.tsx                # Home page (server component)
+│   └── <route>/
+│       ├── page.tsx            # Route page (server component shell)
+│       └── _components/        # Page-specific client components
+├── components/ui/              # Shadcn UI components
+├── lib/
+│   ├── eden.ts                 # Eden treaty client (use this for API calls)
+│   └── utils.ts                # Shadcn cn() helper
+└── server/
+    ├── db/
+    │   ├── index.ts            # Drizzle + Neon connection
+    │   └── schema.ts           # Database schema (single source of truth)
+    ├── errors/
+    │   ├── http.ts             # Custom error classes (ForbiddenError, ConflictError)
+    │   └── index.ts            # Error handler Elysia plugin + re-exports
+    ├── modules/<feature>/
+    │   ├── index.ts            # Controller (Elysia instance with routes)
+    │   ├── service.ts          # Business logic
+    │   └── model.ts            # Elysia.t validation schemas
+    └── index.ts                # Root Elysia app (composes all modules)
+
+test/
+├── setup/                      # Preload scripts (happy-dom, jest-dom)
+├── helpers/
+│   ├── elysia.ts               # createTestClient() for controller tests
+│   └── mock-db.ts              # Drizzle mock via Proxy + setQueryResult()
+├── fixtures/                   # Shared mock data
+├── server/modules/<feature>/   # Backend tests (controller + service)
+└── app/<route>/_components/    # Frontend component tests
+```
+
 ## Database
 
 This project uses [Neon](https://neon.tech/) (serverless Postgres) with [Drizzle ORM](https://orm.drizzle.team/). It supports two modes — **local** and **cloud** — that you can switch between by toggling environment variables. No code changes needed.
@@ -116,6 +164,41 @@ bun run db:generate   # Generate migration files
 bun run db:migrate    # Run pending migrations
 bun run db:studio     # Open Drizzle Studio GUI
 ```
+
+## Testing
+
+```bash
+bun test              # Run all tests
+bun test --watch      # Run tests in watch mode
+```
+
+Tests mirror the source structure under `test/`. Backend tests use `createTestClient()` from `test/helpers/elysia.ts` for controller tests and `setQueryResult()` from `test/helpers/mock-db.ts` for service tests. Frontend tests use React Testing Library. Shared mock data lives in `test/fixtures/`.
+
+A `.env.test` file sets `LOG_LEVEL=silent` to suppress log output during tests.
+
+## Development Workflow
+
+- Run `bun run validate` after every change — this runs lint + type-check + tests
+- **Git hooks** (via [Lefthook](https://github.com/evilmartians/lefthook)):
+  - **Pre-commit**: `biome check --write` on staged files + `tsc --noEmit` (in parallel)
+  - **Pre-push**: `bun run validate` + `bun run build`
+- [Biome](https://biomejs.dev/) handles both formatting and linting — no ESLint or Prettier needed
+
+## Adding Features
+
+### New API module
+
+1. Create `src/server/modules/<name>/model.ts` — Elysia.t validation schemas
+2. Create `src/server/modules/<name>/service.ts` — business logic
+3. Create `src/server/modules/<name>/index.ts` — Elysia controller with routes
+4. Register in `src/server/index.ts` via `.use()`
+5. Add database table in `src/server/db/schema.ts` if needed
+
+### New page
+
+1. Create `src/app/<route>/page.tsx` — server component shell
+2. Create `src/app/<route>/_components/` — colocated client components
+3. Add tests in `test/app/<route>/_components/`
 
 ## Advanced: Neon Local
 

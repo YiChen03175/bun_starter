@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { NotFoundError } from "elysia";
 import { db } from "../../db";
 import { todos } from "../../db/schema";
 import { logger } from "../../logger";
@@ -20,12 +21,14 @@ export const TodoService = {
       .set(data)
       .where(eq(todos.id, id))
       .returning();
+    if (!todo) throw new NotFoundError(`Todo ${id} not found`);
     logger.info({ todoId: id }, "todo updated");
     return todo;
   },
 
   async remove(id: number) {
     const [todo] = await db.delete(todos).where(eq(todos.id, id)).returning();
+    if (!todo) throw new NotFoundError(`Todo ${id} not found`);
     logger.info({ todoId: id }, "todo removed");
     return todo;
   },

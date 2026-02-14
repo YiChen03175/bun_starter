@@ -1,15 +1,19 @@
 import { describe, expect, it, mock } from "bun:test";
+import { NotFoundError } from "elysia";
 import { mockSelectTodo } from "test/fixtures/todo";
 import { createTestClient } from "test/helpers/elysia";
 
 const serviceMock = {
   list: mock(() => [mockSelectTodo]),
   create: mock((title: string) => ({ ...mockSelectTodo, title })),
-  update: mock((_id: number, data: Record<string, unknown>) => ({
-    ...mockSelectTodo,
-    ...data,
-  })),
-  remove: mock((_id: number) => mockSelectTodo),
+  update: mock((id: number, data: Record<string, unknown>) => {
+    if (id === 999) throw new NotFoundError(`Todo ${id} not found`);
+    return { ...mockSelectTodo, ...data };
+  }),
+  remove: mock((id: number) => {
+    if (id === 999) throw new NotFoundError(`Todo ${id} not found`);
+    return mockSelectTodo;
+  }),
 };
 
 mock.module("@/server/modules/todo/service", () => ({
@@ -30,7 +34,7 @@ describe("Todo Controller", () => {
 
   it("POST /api/todos — creates a todo", async () => {
     const res = await client.json("/api/todos", { title: "Test todo" });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     const data = await res.json();
     expect(data.title).toBe("Test todo");
   });
@@ -46,8 +50,18 @@ describe("Todo Controller", () => {
     expect((await res.json()).completed).toBe(true);
   });
 
+  it("PUT /api/todos/:id — returns 404 for non-existent todo", async () => {
+    const res = await client.json("/api/todos/999", { completed: true }, "PUT");
+    expect(res.status).toBe(404);
+  });
+
   it("DELETE /api/todos/:id — removes the todo", async () => {
     const res = await client.request("/api/todos/1", { method: "DELETE" });
     expect(res.status).toBe(200);
+  });
+
+  it("DELETE /api/todos/:id — returns 404 for non-existent todo", async () => {
+    const res = await client.request("/api/todos/999", { method: "DELETE" });
+    expect(res.status).toBe(404);
   });
 });

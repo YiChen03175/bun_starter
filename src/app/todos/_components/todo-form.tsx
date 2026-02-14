@@ -1,22 +1,30 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type SubmitEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 interface TodoFormProps {
-  onAdd: (title: string) => void;
+  onAdd: (title: string) => Promise<void>;
 }
 
 export function TodoForm({ onAdd }: TodoFormProps) {
   const [title, setTitle] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: SubmitEvent) => {
     e.preventDefault();
     const trimmed = title.trim();
-    if (!trimmed) return;
-    onAdd(trimmed);
-    setTitle("");
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
+    try {
+      await onAdd(trimmed);
+      setTitle("");
+    } catch {
+      // Keep title so user can retry
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -25,8 +33,11 @@ export function TodoForm({ onAdd }: TodoFormProps) {
         placeholder="What needs to be done?"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
+        disabled={submitting}
       />
-      <Button type="submit">Add</Button>
+      <Button type="submit" disabled={submitting}>
+        {submitting ? "Adding..." : "Add"}
+      </Button>
     </form>
   );
 }
