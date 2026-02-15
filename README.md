@@ -36,7 +36,8 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 - **Runtime**: [Bun](https://bun.sh/)
 - **Framework**: [Next.js](https://nextjs.org/) (App Router + Turbopack)
 - **API**: [Elysia](https://elysiajs.com/) (runs inside Next.js API routes)
-- **API Client**: [Eden treaty](https://elysiajs.com/eden/overview) (type-safe, auto-inferred from Elysia)
+- **API Client**: [Eden treaty](https://elysiajs.com/eden/overview) + [eden-tanstack-react-query](https://github.com/ap-1/eden-tanstack-react-query) (type-safe, auto-inferred from Elysia)
+- **Data Fetching**: [TanStack React Query](https://tanstack.com/query) (caching, deduplication, background revalidation)
 - **Database**: [Neon](https://neon.tech/) (serverless Postgres) via [Drizzle ORM](https://orm.drizzle.team/); local dev uses `postgres.js` direct TCP
 - **Auth**: [Better Auth](https://www.better-auth.com/) (email/password + Google/GitHub OAuth)
 - **Env Validation**: [@t3-oss/env-nextjs](https://env.t3.gg/) + Zod
@@ -58,7 +59,7 @@ src/
 ├── env.ts                      # Validated env vars (@t3-oss/env-nextjs + Zod)
 ├── lib/
 │   ├── auth-client.ts          # Better Auth React client (signIn, signUp, signOut, useSession)
-│   ├── eden.ts                 # Eden treaty client (use this for API calls)
+│   ├── eden.ts                 # Eden treaty client + React Query hooks (see comments in file)
 │   └── utils.ts                # Shadcn cn() helper
 ├── proxy.ts                    # Next.js middleware (auth redirects)
 └── server/
@@ -81,6 +82,7 @@ test/
 ├── setup/                      # Preload scripts (happy-dom, jest-dom)
 ├── helpers/
 │   ├── elysia.ts               # createTestClient() for controller tests
+│   ├── eden-query.tsx          # Test EdenProvider + createQueryWrapper() for React Query
 │   ├── mock-auth.ts            # Mocks auth for controller tests with auth
 │   └── mock-db.ts              # Drizzle mock via Proxy + setQueryResult()
 ├── fixtures/                   # Shared mock data

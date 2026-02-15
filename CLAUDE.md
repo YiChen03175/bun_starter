@@ -7,7 +7,7 @@ Full-stack Next.js starter with Elysia API backend, type-safe end-to-end via Ede
 - **Runtime**: Bun
 - **Framework**: Next.js (App Router, Turbopack)
 - **API**: Elysia (runs inside Next.js API routes)
-- **API Client**: Eden treaty (type-safe, auto-inferred from Elysia)
+- **API Client**: Eden treaty + eden-tanstack-react-query (type-safe, auto-inferred from Elysia)
 - **Database**: Neon (serverless Postgres) via Drizzle ORM; local dev uses `postgres.js` direct TCP connection
 - **Auth**: Better Auth (email/password + Google/GitHub OAuth) with Elysia integration
 - **Styling**: Tailwind CSS v4 + Shadcn UI
@@ -53,7 +53,7 @@ src/
 ├── env.ts                      # Validated env vars (import from @/env)
 ├── lib/
 │   ├── auth-client.ts          # Better Auth client (signIn, signUp, signOut, useSession)
-│   ├── eden.ts                 # Eden treaty client (use this for API calls)
+│   ├── eden.ts                 # Eden treaty client + React Query hooks (see comments in file)
 │   └── utils.ts                # Shadcn cn() helper
 ├── proxy.ts                    # Next.js proxy (auth redirects, uses getSessionCookie)
 └── server/
@@ -77,10 +77,7 @@ test/
 │   ├── happy-dom.ts            # Preload: saves native Request, registers DOM globals
 │   ├── testing-library.ts     # Preload: jest-dom matchers + cleanup
 │   └── types.d.ts              # Bun matcher augmentation for jest-dom + __BunRequest global
-├── helpers/
-│   ├── elysia.ts               # createTestClient() — wraps Elysia .handle() with native Request
-│   ├── mock-auth.ts            # Mocks @/server/auth for controller tests with auth
-│   └── mock-db.ts              # Drizzle mock via Proxy + setQueryResult()
+├── helpers/                    # Test utilities (elysia, mock-db, mock-auth, eden-query)
 ├── fixtures/                   # Shared mock data (todo.ts, auth.ts)
 ├── server/modules/<feature>/   # Backend tests (controller + service)
 └── app/<route>/_components/    # Frontend component tests
@@ -170,7 +167,11 @@ test/
 - Neon CLI reference: [neonctl docs](https://neon.com/docs/reference/neon-cli)
 
 ### Frontend
-- Eden client at `src/lib/eden.ts` — all API calls are fully type-safe
+- **Eden client** (`@/lib/eden`) — single file, two usage patterns:
+  - **Server components / non-React**: `import { api } from "@/lib/eden"` — direct `await api.api.todos.get()` calls
+  - **Client components**: `import { useEden, useEdenClient } from "@/lib/eden"` — React Query hooks with automatic caching, deduplication, and background revalidation
+- **Client component data fetching**: Use `useEden()` for typed `queryOptions()`/`mutationOptions()`, `useEdenClient()` for manual mutation functions (e.g., parameterized routes with dynamic IDs)
+- **Cache invalidation**: After mutations, invalidate queries via `qc.invalidateQueries({ queryKey: eden.api.<route>.get.queryKey() })`
 - **Server components by default** — only add `"use client"` where interactivity is needed
 - **Error handling**: Always check Eden `{ data, error }` responses; show error state in UI
 - **Async operations**: `"use client"` components should handle loading/disabled states (e.g., `submitting` state in forms)
@@ -193,7 +194,7 @@ test/
 - **Coverage**: Write tests for both happy path and error cases (e.g., not-found returning 404); mock services conditionally (e.g., throw `NotFoundError` for specific IDs) to test error paths through controllers
 - **Test location**: Mirror source structure under `test/` (e.g., `test/server/modules/todo/`)
 - **Preload scripts**: Configured in `bunfig.toml` — happy-dom globals (with native Request preservation), jest-dom matchers
-- **Helpers** (`test/helpers/`): `elysia.ts` (test client for Elysia `.handle()`), `mock-db.ts` (Drizzle mock with `setQueryResult()`)
+- **Helpers** (`test/helpers/`): `elysia.ts` (test client for Elysia `.handle()`), `mock-db.ts` (Drizzle mock with `setQueryResult()`), `eden-query.tsx` (exports test `EdenProvider`/`useEden`/`useEdenClient` for mocking `@/lib/eden`, and `createQueryWrapper(mockClient)` for wrapping components in providers)
 - **Fixtures** (`test/fixtures/`): Shared mock data — import in tests instead of defining inline
 - **Coverage**: `bun run test:coverage` — prints per-file function and line coverage to the terminal; Shadcn UI components (`src/components/ui/`), env validation (`src/env.ts`), DB schema (`src/server/db/schema.ts`), and test infrastructure (`test/setup/`, `test/helpers/`, `test/fixtures/`) are excluded via `coveragePathIgnorePatterns` in `bunfig.toml`
 
@@ -228,3 +229,4 @@ test/
 - **When to update**: After any fundamental change — new folder structure, new infrastructure (e.g., test framework, CI), new conventions, new commands, or dependency changes that affect workflow
 - **When NOT to update**: Bug fixes, feature implementation within existing patterns, or minor refactors that don't change conventions
 - **Timing**: Always update CLAUDE.md as the **last step**, after all code changes pass `bun run validate`.
+- **Brevity**: This file is a high-level summary optimized for LLM context. `README.md` contains the detailed version (full file trees, setup guides, etc.). Keep both consistent, but prefer brevity here.
