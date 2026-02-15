@@ -1,6 +1,6 @@
 # Project Overview
 
-Full-stack Next.js starter with Elysia API backend, type-safe end-to-end via Eden treaty.
+Full-stack Next.js starter with Elysia API backend, type-safe end-to-end via Eden treaty. See `README.md` for setup instructions.
 
 ## Stack
 
@@ -12,11 +12,13 @@ Full-stack Next.js starter with Elysia API backend, type-safe end-to-end via Ede
 - **Auth**: Better Auth (email/password + Google/GitHub OAuth) with Elysia integration
 - **Styling**: Tailwind CSS v4 + Shadcn UI
 - **Linting/Formatting**: Biome (no ESLint/Prettier)
-- **Env Validation**: @t3-oss/env-nextjs + Zod
+- **Env Validation**: t3-oss/env-nextjs + Zod
 - **Testing**: bun:test + Testing Library + happy-dom
 - **Git Hooks**: Lefthook (pre-commit: lint + type-check, pre-push: validate + build)
 
 ## Commands
+
+See `package.json` for all scripts and dependency versions.
 
 ```bash
 bun dev              # Start dev server (Turbopack)
@@ -112,7 +114,7 @@ test/
   4. **Schema**: Add `userId` column with `.references(() => user.id, { onDelete: "cascade" })` and an index
 
 ### Environment Variables
-- **Centralized validation**: All env vars are defined in `src/env.ts` using `@t3-oss/env-nextjs` + Zod
+- **Centralized validation**: All env vars are defined in @src/env.ts using `t3-oss/env-nextjs` + Zod
 - **Import from `@/env`** — never use `process.env` directly in application code (exception: `drizzle.config.ts` runs outside Next.js)
 - **Adding a new env var**: add schema in `src/env.ts`, add to `runtimeEnv`, update `.env.example` and `.env.test`
 - **Server/client boundary**: server vars are only accessible in server code; client vars must be prefixed with `NEXT_PUBLIC_`
@@ -225,4 +227,4 @@ test/
 ### Updating This File (CLAUDE.md)
 - **When to update**: After any fundamental change — new folder structure, new infrastructure (e.g., test framework, CI), new conventions, new commands, or dependency changes that affect workflow
 - **When NOT to update**: Bug fixes, feature implementation within existing patterns, or minor refactors that don't change conventions
-- **Timing**: Always update CLAUDE.md as the **last step**, after all code changes pass `bun run validate`. Validation may fail and require code changes, so update docs only once the code is final.
+- **Timing**: Always update CLAUDE.md as the **last step**, after all code changes pass `bun run validate`.
