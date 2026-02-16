@@ -1,16 +1,23 @@
 import { mock } from "bun:test";
 
 let queryResult: unknown = [];
+let queryResultFn: (() => unknown) | null = null;
 
 export function setQueryResult(result: unknown) {
   queryResult = result;
+  queryResultFn = null;
+}
+
+export function setQueryResultFn(fn: (() => unknown) | null) {
+  queryResultFn = fn;
 }
 
 function drizzleChain() {
   const handler: ProxyHandler<() => void> = {
     get(_, prop) {
       if (prop === "then") {
-        const p = Promise.resolve(queryResult);
+        const value = queryResultFn ? queryResultFn() : queryResult;
+        const p = Promise.resolve(value);
         return p.then.bind(p);
       }
       return new Proxy(() => {}, handler);

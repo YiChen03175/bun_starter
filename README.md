@@ -192,6 +192,21 @@ bun test --watch      # Run tests in watch mode
 
 Tests mirror the source structure under `test/`. Backend tests use `createTestClient()` from `test/helpers/elysia.ts` for controller tests and `setQueryResult()` from `test/helpers/mock-db.ts` for service tests. Frontend tests use React Testing Library. Shared mock data lives in `test/fixtures/`.
 
+All tests follow **BDD style** (Given-When-Then) without Cucumber — use descriptive `// Given`, `// When`, `// Then` comments as behavior specs and `"should [outcome] when [condition]"` naming:
+
+```typescript
+it("should return the created column", async () => {
+  // Given valid column data
+  setQueryResult([mockColumn]);
+
+  // When the service creates a column with title "To Do"
+  const col = await ColumnService.create("To Do", userId);
+
+  // Then the column should be persisted and returned
+  expect(col).toEqual(mockColumn);
+});
+```
+
 A `.env.test` file sets `LOG_LEVEL=silent` to suppress log output during tests.
 
 ## Development Workflow

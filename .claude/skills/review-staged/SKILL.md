@@ -17,8 +17,6 @@ The user specifies the review scope via `$ARGUMENTS`:
 
 ## Workflow
 
-Follow these steps precisely:
-
 ### Step 1: Gather context
 
 1. Determine scope from `$ARGUMENTS` (default: `all`)
@@ -37,13 +35,17 @@ Launch 5 parallel Sonnet agents via the Task tool. Provide each agent with:
 - The contents of CLAUDE.md and README.md
 - The list of changed file paths
 
-Each agent focuses on one dimension and returns a list of issues with file:line references and the reason each was flagged:
+Each agent focuses on one dimension and returns a list of issues. For each issue, include:
+- `file:line` reference
+- Severity: **high** (bugs, security, data loss, broken functionality) or **medium** (convention violations, missing tests, best practice deviations)
+- Whether it's **new** (introduced by this diff) or **pre-existing** (exists in modified file but not caused by this change)
+- Brief reason it was flagged
 
 **Agent 1 — CLAUDE.md / README.md compliance**
 Check all changes against documented conventions, patterns, import rules, naming conventions, and stack decisions in CLAUDE.md and README.md. Flag any inconsistency between what the docs say and what the code does. Also flag if the docs themselves need updating due to the changes.
 
 **Agent 2 — Bug scan**
-Shallow scan of the diff for obvious bugs: type safety issues, unsafe casts, logic errors, race conditions, security risks (injection, XSS, CSRF, secrets exposure), missing error handling, resource leaks. Focus on high-impact bugs. Skip issues that a linter, typechecker, or compiler would catch — those are handled by Step 0.
+Shallow scan of the diff for obvious bugs: type safety issues, unsafe casts, logic errors, race conditions, security risks (injection, XSS, CSRF, secrets exposure), missing error handling, resource leaks. Focus on high-impact bugs. Skip issues that a linter, typechecker, or compiler would catch — those are handled by `bun run validate`.
 
 **Agent 3 — Testing quality**
 Review any new or modified test files. Check that:
@@ -72,27 +74,9 @@ Check whether the changes introduce new patterns, dependencies, conventions, or 
 - Inline code comments should be accurate and not stale
 - README.md and CLAUDE.md should be consistent with each other
 
-### Step 3: Score and filter
+### Step 3: Report
 
-Collect all issues from the 5 agents. For each issue, launch a parallel Haiku agent (via Task tool) to score confidence on a 0–100 scale. Give the agent this rubric verbatim:
-
-- **0**: Not confident at all. This is a false positive that doesn't stand up to light scrutiny.
-- **25**: Somewhat confident. Might be real, but may be a false positive. If stylistic, not explicitly called out in CLAUDE.md.
-- **50**: Moderately confident. Verified as real, but a nitpick or rarely triggered in practice. Not very important relative to the rest of the change.
-- **75**: Highly confident. Double-checked and very likely a real issue that will be hit in practice. Directly impacts functionality, or explicitly mentioned in CLAUDE.md.
-- **100**: Absolutely certain. Confirmed with evidence. Will happen frequently in practice.
-
-For issues flagged due to CLAUDE.md, the scoring agent must verify the CLAUDE.md actually says what was claimed.
-
-**Classify each issue** as either:
-- **New issue** — introduced by the current diff
-- **Pre-existing issue** — exists in a modified file but not caused by the current changes
-
-Filter: keep issues with score >= 75.
-
-### Step 4: Report
-
-Output a structured review using this format:
+Collect all issues from the 5 agents, deduplicate, and output:
 
 ---
 
@@ -102,14 +86,14 @@ Output a structured review using this format:
 [Report `bun run validate` output. If all passed: "All checks passed (lint, type-check, tests)."]
 
 ### Issues in Changed Code
-[List new issues introduced by the diff, scored >= 75. For each:]
-1. **[severity: high|medium]** `file:line` — Description of issue (reason: CLAUDE.md says "...", or: bug due to ..., or: missing test for ...)
+[List new issues introduced by the diff. For each:]
+1. **[high|medium]** `file:line` — Description (reason: CLAUDE.md says "...", or: bug due to ..., or: missing test for ...)
 
 [If none: "No new issues found."]
 
 ### Pre-existing Issues
-[List pre-existing issues in modified files, scored >= 75. For each:]
-1. **[severity: high|medium]** `file:line` — Description (pre-existing, not caused by this change)
+[List pre-existing issues in modified files, not caused by this change. For each:]
+1. **[high|medium]** `file:line` — Description (pre-existing)
 
 [If none: "No pre-existing issues found."]
 
@@ -118,11 +102,11 @@ Output a structured review using this format:
 
 ---
 
-## False positive guidance
+## What to skip
 
-When reviewing, skip these — they are NOT real issues:
+These are NOT real issues — do not flag them:
 
-- Issues that a linter, typechecker, or compiler would catch (already handled by `bun run validate`)
+- Issues that a linter, typechecker, or compiler would catch (handled by `bun run validate`)
 - Pedantic nitpicks that a senior engineer wouldn't call out
 - General code quality concerns (lack of coverage, vague security worries) unless explicitly required in CLAUDE.md
 - Issues silenced by explicit lint-ignore comments that include a justification
@@ -131,13 +115,10 @@ When reviewing, skip these — they are NOT real issues:
 
 ## Review principles
 
-These core principles guide every review:
-
-1. **Review what changed, flag what exists** — new issues in the diff are primary; pre-existing issues are listed separately for user decision
+1. **Review what changed, flag what exists** — new issues are primary; pre-existing issues are listed separately for the user to decide
 2. **Bugs over style** — prioritize correctness, security, and data integrity over formatting
 3. **Trust the toolchain** — don't duplicate linters, type checkers, and CI
 4. **Check docs match code** — new patterns, deps, or conventions need doc updates
 5. **Verify tests are real** — tests must exercise actual behavior, not just pass
 6. **Stack-aware review** — apply framework-specific best practices for the technologies in the diff
-7. **Confidence-gated output** — only surface high-confidence issues (>= 75) to avoid noise
-8. **Cite everything** — every issue must reference file:line and the reason it was flagged
+7. **Cite everything** — every issue must reference file:line and the reason it was flagged

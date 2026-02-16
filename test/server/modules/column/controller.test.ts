@@ -29,54 +29,104 @@ const { app } = await import("@/server");
 const client = createTestClient(app);
 
 describe("Column Controller", () => {
-  it("GET /api/columns — returns an array", async () => {
-    const res = await client.request("/api/columns");
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(Array.isArray(data)).toBe(true);
-    expect(data).toHaveLength(3);
-    expect(serviceMock.list).toHaveBeenCalledWith("test-user-id");
-  });
+  // Authenticated CRUD operations on columns — all routes require { auth: true }
+  describe("GET /api/columns", () => {
+    it("should return a list of columns", async () => {
+      // When an authenticated user sends GET /api/columns
+      const res = await client.request("/api/columns");
 
-  it("POST /api/columns — creates a column", async () => {
-    const res = await client.json("/api/columns", { title: "Backlog" });
-    expect(res.status).toBe(201);
-    const data = await res.json();
-    expect(data.title).toBe("Backlog");
-    expect(serviceMock.create).toHaveBeenCalledWith("Backlog", "test-user-id");
-  });
-
-  it("POST /api/columns — rejects empty title", async () => {
-    const res = await client.json("/api/columns", { title: "" });
-    expect(res.status).toBe(422);
-  });
-
-  it("PUT /api/columns/:id — updates a column", async () => {
-    const res = await client.json("/api/columns/1", { title: "Done" }, "PUT");
-    expect(res.status).toBe(200);
-    expect((await res.json()).title).toBe("Done");
-    expect(serviceMock.update).toHaveBeenCalledWith(
-      1,
-      { title: "Done" },
-      "test-user-id",
-    );
-  });
-
-  it("PUT /api/columns/:id — returns 404 for non-existent column", async () => {
-    const res = await client.json("/api/columns/999", { title: "Nope" }, "PUT");
-    expect(res.status).toBe(404);
-  });
-
-  it("DELETE /api/columns/:id — removes the column", async () => {
-    const res = await client.request("/api/columns/1", { method: "DELETE" });
-    expect(res.status).toBe(200);
-    expect(serviceMock.remove).toHaveBeenCalledWith(1, "test-user-id");
-  });
-
-  it("DELETE /api/columns/:id — returns 404 for non-existent column", async () => {
-    const res = await client.request("/api/columns/999", {
-      method: "DELETE",
+      // Then it should return 200 with all the user's columns
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(Array.isArray(data)).toBe(true);
+      expect(data).toHaveLength(3);
+      expect(serviceMock.list).toHaveBeenCalledWith("test-user-id");
     });
-    expect(res.status).toBe(404);
+  });
+
+  describe("POST /api/columns", () => {
+    it("should create a column when title is valid", async () => {
+      // When an authenticated user creates a column with title "Backlog"
+      const res = await client.json("/api/columns", { title: "Backlog" });
+
+      // Then it should return 201 with the created column
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.title).toBe("Backlog");
+      expect(serviceMock.create).toHaveBeenCalledWith(
+        "Backlog",
+        "test-user-id",
+      );
+    });
+
+    it("should return 422 when title is empty", async () => {
+      // When an authenticated user creates a column with an empty title
+      const res = await client.json("/api/columns", { title: "" });
+
+      // Then it should reject with 422 validation error
+      expect(res.status).toBe(422);
+    });
+  });
+
+  describe("PUT /api/columns/:id", () => {
+    it("should update the column when it exists", async () => {
+      // When an authenticated user updates column 1 with a new title
+      const res = await client.json("/api/columns/1", { title: "Done" }, "PUT");
+
+      // Then it should return 200 with the updated column
+      expect(res.status).toBe(200);
+      expect((await res.json()).title).toBe("Done");
+      expect(serviceMock.update).toHaveBeenCalledWith(
+        1,
+        { title: "Done" },
+        "test-user-id",
+      );
+    });
+
+    it("should update the column position when position is provided", async () => {
+      // When an authenticated user updates column 1 with a new position
+      const res = await client.json("/api/columns/1", { position: 2 }, "PUT");
+
+      // Then it should return 200 and forward the position to the service
+      expect(res.status).toBe(200);
+      expect(serviceMock.update).toHaveBeenCalledWith(
+        1,
+        { position: 2 },
+        "test-user-id",
+      );
+    });
+
+    it("should return 404 when column does not exist", async () => {
+      // When an authenticated user tries to update a non-existent column
+      const res = await client.json(
+        "/api/columns/999",
+        { title: "Nope" },
+        "PUT",
+      );
+
+      // Then it should return 404
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe("DELETE /api/columns/:id", () => {
+    it("should remove the column when it exists", async () => {
+      // When an authenticated user deletes column 1
+      const res = await client.request("/api/columns/1", { method: "DELETE" });
+
+      // Then it should return 200 and call the service with the user's id
+      expect(res.status).toBe(200);
+      expect(serviceMock.remove).toHaveBeenCalledWith(1, "test-user-id");
+    });
+
+    it("should return 404 when column does not exist", async () => {
+      // When an authenticated user tries to delete a non-existent column
+      const res = await client.request("/api/columns/999", {
+        method: "DELETE",
+      });
+
+      // Then it should return 404
+      expect(res.status).toBe(404);
+    });
   });
 });

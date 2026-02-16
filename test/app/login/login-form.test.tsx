@@ -36,19 +36,28 @@ describe("LoginForm", () => {
   });
 
   describe("rendering", () => {
-    it("renders email and password fields", () => {
+    it("should display email and password fields", () => {
+      // Given the login form is rendered with all providers enabled
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
+
+      // Then it should show email and password input fields
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
     });
 
-    it("renders login button", () => {
+    it("should display login button", () => {
+      // Given the login form is rendered
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
+
+      // Then it should show the Login submit button
       expect(screen.getByRole("button", { name: "Login" })).toBeInTheDocument();
     });
 
-    it("renders social login buttons", () => {
+    it("should display social login buttons", () => {
+      // Given the login form is rendered with Google and GitHub enabled
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
+
+      // Then it should show both social login buttons
       expect(
         screen.getByRole("button", { name: /google/i }),
       ).toBeInTheDocument();
@@ -57,8 +66,11 @@ describe("LoginForm", () => {
       ).toBeInTheDocument();
     });
 
-    it("renders sign up link with correct href", () => {
+    it("should display sign up link with correct href", () => {
+      // Given the login form is rendered
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
+
+      // Then it should show a link to the signup page
       const link = screen.getByRole("link", { name: /sign up/i });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "/signup");
@@ -66,9 +78,11 @@ describe("LoginForm", () => {
   });
 
   describe("form submission", () => {
-    it("calls signIn.email with credentials and navigates on success", async () => {
+    it("should call signIn.email and navigate when credentials are valid", async () => {
+      // Given the login form is rendered
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
 
+      // When the user fills in valid credentials and clicks Login
       await userEvent.type(
         screen.getByLabelText(/email/i),
         mockCredentials.email,
@@ -79,6 +93,7 @@ describe("LoginForm", () => {
       );
       await userEvent.click(screen.getByRole("button", { name: "Login" }));
 
+      // Then it should call signIn.email and redirect to the home page
       await waitFor(() => {
         expect(signInEmail).toHaveBeenCalledWith({
           email: mockCredentials.email,
@@ -90,10 +105,12 @@ describe("LoginForm", () => {
       expect(refreshMock).toHaveBeenCalled();
     });
 
-    it("shows loading state while submitting", async () => {
+    it("should show loading state while submitting", async () => {
+      // Given signIn.email is configured to never resolve (simulating slow network)
       signInEmail.mockImplementation(() => new Promise(() => {}));
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
 
+      // When the user fills in credentials and clicks Login
       await userEvent.type(
         screen.getByLabelText(/email/i),
         mockCredentials.email,
@@ -104,6 +121,7 @@ describe("LoginForm", () => {
       );
       await userEvent.click(screen.getByRole("button", { name: "Login" }));
 
+      // Then the button should show "Signing in..." and be disabled
       await waitFor(() => {
         const button = screen.getByRole("button", { name: /signing in/i });
         expect(button).toBeDisabled();
@@ -112,18 +130,28 @@ describe("LoginForm", () => {
   });
 
   describe("social login", () => {
-    it("calls signIn.social with google provider", async () => {
+    it("should call signIn.social with google provider when Google button is clicked", async () => {
+      // Given the login form is rendered with Google enabled
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
+
+      // When the user clicks the Google login button
       await userEvent.click(screen.getByRole("button", { name: /google/i }));
+
+      // Then it should initiate Google OAuth with the correct callback URL
       expect(signInSocial).toHaveBeenCalledWith({
         provider: "google",
         callbackURL: "/",
       });
     });
 
-    it("calls signIn.social with github provider", async () => {
+    it("should call signIn.social with github provider when GitHub button is clicked", async () => {
+      // Given the login form is rendered with GitHub enabled
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
+
+      // When the user clicks the GitHub login button
       await userEvent.click(screen.getByRole("button", { name: /github/i }));
+
+      // Then it should initiate GitHub OAuth with the correct callback URL
       expect(signInSocial).toHaveBeenCalledWith({
         provider: "github",
         callbackURL: "/",
@@ -132,7 +160,8 @@ describe("LoginForm", () => {
   });
 
   describe("error handling", () => {
-    it("shows API error message", async () => {
+    it("should show API error message when login fails", async () => {
+      // Given signIn.email returns an error response with "Invalid credentials"
       signInEmail.mockImplementation(() =>
         Promise.resolve({
           data: null,
@@ -141,25 +170,28 @@ describe("LoginForm", () => {
       );
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
 
+      // When the user fills in wrong credentials and clicks Login
       await userEvent.type(screen.getByLabelText(/email/i), "bad@example.com");
       await userEvent.type(screen.getByLabelText(/password/i), "wrong");
       await userEvent.click(screen.getByRole("button", { name: "Login" }));
 
+      // Then it should display the API error and not navigate
       await waitFor(() => {
         expect(screen.getByRole("alert")).toHaveTextContent(
           "Invalid credentials",
         );
       });
-
       expect(pushMock).not.toHaveBeenCalled();
     });
 
-    it("shows fallback error on exception", async () => {
+    it("should show fallback error when an exception occurs", async () => {
+      // Given signIn.email throws a network error
       signInEmail.mockImplementation(() =>
         Promise.reject(new Error("Network error")),
       );
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
 
+      // When the user fills in credentials and clicks Login
       await userEvent.type(
         screen.getByLabelText(/email/i),
         mockCredentials.email,
@@ -170,12 +202,12 @@ describe("LoginForm", () => {
       );
       await userEvent.click(screen.getByRole("button", { name: "Login" }));
 
+      // Then it should display a generic fallback error and not navigate
       await waitFor(() => {
         expect(screen.getByRole("alert")).toHaveTextContent(
           "Something went wrong",
         );
       });
-
       expect(pushMock).not.toHaveBeenCalled();
     });
   });

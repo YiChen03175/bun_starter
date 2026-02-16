@@ -1,5 +1,6 @@
 import { describe, expect, it, mock } from "bun:test";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import {
   createQueryWrapper,
   EdenProvider,
@@ -78,46 +79,162 @@ function renderTableView(overrides?: Parameters<typeof createMockClient>[0]) {
 }
 
 describe("TableView", () => {
-  it("shows loading state initially", () => {
-    renderTableView({
-      getTasks: () => new Promise(() => {}),
+  // Flat table view of all tasks across columns with pagination and delete
+  describe("rendering", () => {
+    it("should show loading state initially", () => {
+      // Given + When the table view is rendered with a query that never resolves
+      renderTableView({
+        getTasks: () => new Promise(() => {}),
+      });
+
+      // Then it should display a loading indicator
+      expect(screen.getByText("Loading...")).toBeInTheDocument();
     });
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+
+    it("should render tasks in table when loaded", async () => {
+      // Given + When the table view is rendered with tasks in two columns
+      renderTableView();
+
+      // Then it should display all tasks with their column names
+      await waitFor(() => {
+        expect(screen.getByText("Implement login")).toBeInTheDocument();
+      });
+      expect(screen.getByText("Write tests")).toBeInTheDocument();
+      expect(screen.getByText("To Do")).toBeInTheDocument();
+      expect(screen.getByText("In Progress")).toBeInTheDocument();
+    });
+
+    it("should show empty state when no tasks exist", async () => {
+      // Given + When the table view is rendered with an empty task list
+      renderTableView({
+        getTasks: () =>
+          Promise.resolve({ data: { tasks: [], total: 0 }, error: null }),
+      });
+
+      // Then it should display the empty state message
+      await waitFor(() => {
+        expect(screen.getByText("No tasks yet.")).toBeInTheDocument();
+      });
+    });
   });
 
-  it("renders tasks in table", async () => {
-    renderTableView();
-    await waitFor(() => {
-      expect(screen.getByText("Implement login")).toBeInTheDocument();
+  describe("pagination", () => {
+    it("should show pagination info", async () => {
+      // Given + When the table view is rendered with 2 tasks
+      renderTableView();
+
+      // Then it should display the pagination summary
+      await waitFor(() => {
+        expect(screen.getByText("Showing 1-2 of 2")).toBeInTheDocument();
+      });
     });
-    expect(screen.getByText("Write tests")).toBeInTheDocument();
-    expect(screen.getByText("To Do")).toBeInTheDocument();
-    expect(screen.getByText("In Progress")).toBeInTheDocument();
+
+    it("should paginate forward and backward", async () => {
+      // Given 21 tasks exist and the table view shows the first page
+      const tasks = Array.from({ length: 21 }, (_, i) => ({
+        id: i + 1,
+        title: `Task ${i + 1}`,
+        description: null,
+        columnId: 1,
+        position: i,
+        userId: "u1",
+        createdAt: "2025-01-01T00:00:00.000Z",
+        updatedAt: "2025-01-01T00:00:00.000Z",
+      }));
+      let currentOffset = 0;
+      renderTableView({
+        getTasks: () => {
+          const page = tasks.slice(currentOffset, currentOffset + 20);
+          return Promise.resolve({
+            data: { tasks: page, total: 21 },
+            error: null,
+          });
+        },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Task 1")).toBeInTheDocument();
+      });
+      expect(screen.getByText("Showing 1-20 of 21")).toBeInTheDocument();
+
+      const nextBtn = screen.getByRole("button", { name: "Next page" });
+      const prevBtn = screen.getByRole("button", { name: "Previous page" });
+      expect(prevBtn).toBeDisabled();
+      expect(nextBtn).not.toBeDisabled();
+
+      // When the user clicks Next page to go to page 2
+      currentOffset = 20;
+      await userEvent.click(nextBtn);
+
+      // Then the second page should show the last task
+      await waitFor(() => {
+        expect(screen.getByText("Task 21")).toBeInTheDocument();
+      });
+
+      // When the user clicks Previous page to go back to page 1
+      currentOffset = 0;
+      await userEvent.click(
+        screen.getByRole("button", { name: "Previous page" }),
+      );
+
+      // Then the first page should show the first task again
+      await waitFor(() => {
+        expect(screen.getByText("Task 1")).toBeInTheDocument();
+      });
+    });
   });
 
-  it("shows empty state when no tasks", async () => {
-    renderTableView({
-      getTasks: () =>
-        Promise.resolve({ data: { tasks: [], total: 0 }, error: null }),
-    });
-    await waitFor(() => {
-      expect(screen.getByText("No tasks yet.")).toBeInTheDocument();
+  describe("error handling", () => {
+    it("should show empty state when query fails", async () => {
+      // Given + When the table view is rendered and the API rejects with an error
+      renderTableView({
+        getTasks: () => Promise.reject(new Error("Server Error")),
+      });
+
+      // Then it should gracefully show the empty state
+      await waitFor(() => {
+        expect(screen.getByText("No tasks yet.")).toBeInTheDocument();
+      });
     });
   });
 
-  it("shows pagination info", async () => {
-    renderTableView();
-    await waitFor(() => {
-      expect(screen.getByText("Showing 1-2 of 2")).toBeInTheDocument();
-    });
-  });
+  describe("task actions", () => {
+    it("should call delete mutation when delete button is clicked", async () => {
+      // Given the table view is rendered with tasks and a mock delete endpoint
+      const deleteMock = mock(() => Promise.resolve({ data: {}, error: null }));
+      const mockClient = {
+        api: {
+          tasks: Object.assign(
+            (_params: { id: number }) => ({
+              put: () => Promise.resolve({ data: {}, error: null }),
+              delete: deleteMock,
+            }),
+            {
+              get: () =>
+                Promise.resolve({
+                  data: { tasks: mockTasks, total: 2 },
+                  error: null,
+                }),
+              post: () => Promise.resolve({ data: {}, error: null }),
+            },
+          ),
+        },
+      };
+      const { Wrapper } = createQueryWrapper(mockClient);
+      render(<TableView columns={columns} />, { wrapper: Wrapper });
 
-  it("shows error state when query fails", async () => {
-    renderTableView({
-      getTasks: () => Promise.reject(new Error("Server Error")),
-    });
-    await waitFor(() => {
-      expect(screen.getByText("No tasks yet.")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText("Implement login")).toBeInTheDocument();
+      });
+
+      // When the user clicks the Delete button on the first task
+      const deleteButtons = screen.getAllByRole("button", { name: "Delete" });
+      await userEvent.click(deleteButtons[0]);
+
+      // Then the task should be deleted via the API
+      await waitFor(() => {
+        expect(deleteMock).toHaveBeenCalled();
+      });
     });
   });
 });

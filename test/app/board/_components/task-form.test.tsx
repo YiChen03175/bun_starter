@@ -4,63 +4,88 @@ import userEvent from "@testing-library/user-event";
 import { TaskForm } from "@/app/board/_components/task-form";
 
 describe("TaskForm", () => {
-  it("renders input and submit button", () => {
-    render(<TaskForm onAdd={mock(() => Promise.resolve())} />);
-    expect(screen.getByPlaceholderText("Add a task...")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /add/i })).toBeInTheDocument();
+  // Input form for adding tasks to a column
+  describe("rendering", () => {
+    it("should display input and submit button", () => {
+      // Given the task form is rendered
+      render(<TaskForm onAdd={mock(() => Promise.resolve())} />);
+
+      // Then it should show the task input field and an Add button
+      expect(screen.getByPlaceholderText("Add a task...")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /add/i })).toBeInTheDocument();
+    });
   });
 
-  it("calls onAdd with trimmed title on submit", async () => {
-    const onAdd = mock(() => Promise.resolve());
-    render(<TaskForm onAdd={onAdd} />);
+  describe("submitting a task", () => {
+    it("should call onAdd with trimmed title when submitted", async () => {
+      // Given the task form is rendered with an onAdd callback
+      const onAdd = mock(() => Promise.resolve());
+      render(<TaskForm onAdd={onAdd} />);
 
-    await userEvent.type(
-      screen.getByPlaceholderText("Add a task..."),
-      "  Buy milk  ",
-    );
-    await userEvent.click(screen.getByRole("button", { name: /add/i }));
+      // When the user types a title with extra whitespace and submits
+      await userEvent.type(
+        screen.getByPlaceholderText("Add a task..."),
+        "  Buy milk  ",
+      );
+      await userEvent.click(screen.getByRole("button", { name: /add/i }));
 
-    expect(onAdd).toHaveBeenCalledWith("Buy milk");
+      // Then onAdd should be called with the trimmed title
+      expect(onAdd).toHaveBeenCalledWith("Buy milk");
+    });
+
+    it("should clear input after successful submission", async () => {
+      // Given the task form is rendered and the user has typed a title
+      const onAdd = mock(() => Promise.resolve());
+      render(<TaskForm onAdd={onAdd} />);
+      const input = screen.getByPlaceholderText("Add a task...");
+
+      // When the user submits the form successfully
+      await userEvent.type(input, "Buy milk");
+      await userEvent.click(screen.getByRole("button", { name: /add/i }));
+
+      // Then the input should be cleared
+      expect(input).toHaveValue("");
+    });
+
+    it("should keep title when submission fails", async () => {
+      // Given the task form is rendered and the API will reject
+      const onAdd = mock(() => Promise.reject(new Error("API error")));
+      render(<TaskForm onAdd={onAdd} />);
+      const input = screen.getByPlaceholderText("Add a task...");
+
+      // When the user submits and the API call fails
+      await userEvent.type(input, "Buy milk");
+      await userEvent.click(screen.getByRole("button", { name: /add/i }));
+
+      // Then the input should retain the typed title for retry
+      expect(input).toHaveValue("Buy milk");
+    });
   });
 
-  it("clears input after successful submission", async () => {
-    const onAdd = mock(() => Promise.resolve());
-    render(<TaskForm onAdd={onAdd} />);
+  describe("input validation", () => {
+    it("should not call onAdd when input is empty", async () => {
+      // Given the task form is rendered with an empty input
+      const onAdd = mock(() => Promise.resolve());
+      render(<TaskForm onAdd={onAdd} />);
 
-    const input = screen.getByPlaceholderText("Add a task...");
-    await userEvent.type(input, "Buy milk");
-    await userEvent.click(screen.getByRole("button", { name: /add/i }));
+      // When the user clicks Add without typing anything
+      await userEvent.click(screen.getByRole("button", { name: /add/i }));
 
-    expect(input).toHaveValue("");
-  });
+      // Then onAdd should not be called
+      expect(onAdd).not.toHaveBeenCalled();
+    });
 
-  it("does not call onAdd with empty input", async () => {
-    const onAdd = mock(() => Promise.resolve());
-    render(<TaskForm onAdd={onAdd} />);
+    it("should not call onAdd when input is whitespace-only", async () => {
+      // Given the task form is rendered
+      const onAdd = mock(() => Promise.resolve());
+      render(<TaskForm onAdd={onAdd} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /add/i }));
+      // When the user types only whitespace and submits
+      await userEvent.type(screen.getByPlaceholderText("Add a task..."), "   ");
+      await userEvent.click(screen.getByRole("button", { name: /add/i }));
 
-    expect(onAdd).not.toHaveBeenCalled();
-  });
-
-  it("does not call onAdd with whitespace-only input", async () => {
-    const onAdd = mock(() => Promise.resolve());
-    render(<TaskForm onAdd={onAdd} />);
-
-    await userEvent.type(screen.getByPlaceholderText("Add a task..."), "   ");
-    await userEvent.click(screen.getByRole("button", { name: /add/i }));
-
-    expect(onAdd).not.toHaveBeenCalled();
-  });
-
-  it("keeps title on submission failure", async () => {
-    const onAdd = mock(() => Promise.reject(new Error("API error")));
-    render(<TaskForm onAdd={onAdd} />);
-
-    const input = screen.getByPlaceholderText("Add a task...");
-    await userEvent.type(input, "Buy milk");
-    await userEvent.click(screen.getByRole("button", { name: /add/i }));
-
-    expect(input).toHaveValue("Buy milk");
+      // Then onAdd should not be called
+      expect(onAdd).not.toHaveBeenCalled();
+    });
   });
 });

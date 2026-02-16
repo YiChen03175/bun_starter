@@ -59,61 +59,137 @@ const { app } = await import("@/server");
 const client = createTestClient(app);
 
 describe("Task Controller", () => {
-  it("GET /api/tasks — returns tasks with total", async () => {
-    const res = await client.request("/api/tasks");
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.tasks).toHaveLength(1);
-    expect(data.total).toBe(1);
-  });
+  // Authenticated CRUD operations on tasks — all routes require { auth: true }
+  describe("GET /api/tasks", () => {
+    it("should return tasks with total count", async () => {
+      // When an authenticated user sends GET /api/tasks
+      const res = await client.request("/api/tasks");
 
-  it("GET /api/tasks?columnId=1 — passes query params", async () => {
-    const res = await client.request("/api/tasks?columnId=1&limit=10&offset=0");
-    expect(res.status).toBe(200);
-    expect(serviceMock.list).toHaveBeenCalledWith("test-user-id", {
-      columnId: 1,
-      limit: 10,
-      offset: 0,
+      // Then it should return 200 with tasks and total count
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.tasks).toHaveLength(1);
+      expect(data.total).toBe(1);
+    });
+
+    it("should pass query params to service when filtering", async () => {
+      // When an authenticated user sends GET /api/tasks with column and pagination filters
+      const res = await client.request(
+        "/api/tasks?columnId=1&limit=10&offset=0",
+      );
+
+      // Then it should forward the filters to the service
+      expect(res.status).toBe(200);
+      expect(serviceMock.list).toHaveBeenCalledWith("test-user-id", {
+        columnId: 1,
+        limit: 10,
+        offset: 0,
+      });
     });
   });
 
-  it("POST /api/tasks — creates a task", async () => {
-    const res = await client.json("/api/tasks", {
-      title: "New task",
-      columnId: 1,
+  describe("POST /api/tasks", () => {
+    it("should create a task when data is valid", async () => {
+      // When an authenticated user creates a task with title and column
+      const res = await client.json("/api/tasks", {
+        title: "New task",
+        columnId: 1,
+      });
+
+      // Then it should return 201 with the created task
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.title).toBe("New task");
     });
-    expect(res.status).toBe(201);
-    const data = await res.json();
-    expect(data.title).toBe("New task");
-  });
 
-  it("POST /api/tasks — rejects empty title", async () => {
-    const res = await client.json("/api/tasks", {
-      title: "",
-      columnId: 1,
+    it("should create a task with description when provided", async () => {
+      // When an authenticated user creates a task with a title and description
+      const res = await client.json("/api/tasks", {
+        title: "New task",
+        columnId: 1,
+        description: "Details",
+      });
+
+      // Then it should return 201 and forward the full data to the service
+      expect(res.status).toBe(201);
+      expect(serviceMock.create).toHaveBeenCalledWith(
+        { title: "New task", columnId: 1, description: "Details" },
+        "test-user-id",
+      );
     });
-    expect(res.status).toBe(422);
+
+    it("should return 422 when title is empty", async () => {
+      // When an authenticated user creates a task with an empty title
+      const res = await client.json("/api/tasks", {
+        title: "",
+        columnId: 1,
+      });
+
+      // Then it should reject with 422 validation error
+      expect(res.status).toBe(422);
+    });
+
+    it("should return 422 when columnId is missing", async () => {
+      // When an authenticated user creates a task without a columnId
+      const res = await client.json("/api/tasks", { title: "New task" });
+
+      // Then it should reject with 422 validation error
+      expect(res.status).toBe(422);
+    });
   });
 
-  it("PUT /api/tasks/:id — updates a task", async () => {
-    const res = await client.json("/api/tasks/1", { title: "Updated" }, "PUT");
-    expect(res.status).toBe(200);
-    expect((await res.json()).title).toBe("Updated");
+  describe("PUT /api/tasks/:id", () => {
+    it("should update the task when it exists", async () => {
+      // When an authenticated user updates task 1 with a new title
+      const res = await client.json(
+        "/api/tasks/1",
+        { title: "Updated" },
+        "PUT",
+      );
+
+      // Then it should return 200 with the updated task
+      expect(res.status).toBe(200);
+      expect((await res.json()).title).toBe("Updated");
+    });
+
+    it("should move a task to a different column", async () => {
+      // When an authenticated user moves task 1 to column 2
+      const res = await client.json("/api/tasks/1", { columnId: 2 }, "PUT");
+
+      // Then it should return 200 and forward the column change to the service
+      expect(res.status).toBe(200);
+      expect(serviceMock.update).toHaveBeenCalledWith(
+        1,
+        { columnId: 2 },
+        "test-user-id",
+      );
+    });
+
+    it("should return 404 when task does not exist", async () => {
+      // When an authenticated user tries to update a non-existent task
+      const res = await client.json("/api/tasks/999", { title: "Nope" }, "PUT");
+
+      // Then it should return 404
+      expect(res.status).toBe(404);
+    });
   });
 
-  it("PUT /api/tasks/:id — returns 404 for non-existent task", async () => {
-    const res = await client.json("/api/tasks/999", { title: "Nope" }, "PUT");
-    expect(res.status).toBe(404);
-  });
+  describe("DELETE /api/tasks/:id", () => {
+    it("should remove the task when it exists", async () => {
+      // When an authenticated user deletes task 1
+      const res = await client.request("/api/tasks/1", { method: "DELETE" });
 
-  it("DELETE /api/tasks/:id — removes the task", async () => {
-    const res = await client.request("/api/tasks/1", { method: "DELETE" });
-    expect(res.status).toBe(200);
-    expect(serviceMock.remove).toHaveBeenCalledWith(1, "test-user-id");
-  });
+      // Then it should return 200 and call the service with the user's id
+      expect(res.status).toBe(200);
+      expect(serviceMock.remove).toHaveBeenCalledWith(1, "test-user-id");
+    });
 
-  it("DELETE /api/tasks/:id — returns 404 for non-existent task", async () => {
-    const res = await client.request("/api/tasks/999", { method: "DELETE" });
-    expect(res.status).toBe(404);
+    it("should return 404 when task does not exist", async () => {
+      // When an authenticated user tries to delete a non-existent task
+      const res = await client.request("/api/tasks/999", { method: "DELETE" });
+
+      // Then it should return 404
+      expect(res.status).toBe(404);
+    });
   });
 });

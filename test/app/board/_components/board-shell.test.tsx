@@ -80,52 +80,179 @@ function renderBoardShell(
 }
 
 describe("BoardShell", () => {
-  it("shows loading state initially", () => {
-    renderBoardShell({
-      getColumns: () => new Promise(() => {}),
+  // Main board orchestrator — manages columns, view switching, and column mutations
+  describe("loading and rendering", () => {
+    it("should show loading state initially", () => {
+      // Given + When the board shell is rendered with a query that never resolves
+      renderBoardShell({
+        getColumns: () => new Promise(() => {}),
+      });
+
+      // Then it should display the loading message
+      expect(screen.getByText("Loading board...")).toBeInTheDocument();
     });
-    expect(screen.getByText("Loading board...")).toBeInTheDocument();
+
+    it("should render kanban view with columns by default", async () => {
+      // Given + When the board shell is rendered with default columns
+      renderBoardShell();
+
+      // Then it should display all three default columns in kanban view
+      await waitFor(() => {
+        expect(screen.getByText("To Do")).toBeInTheDocument();
+      });
+      expect(screen.getByText("In Progress")).toBeInTheDocument();
+      expect(screen.getByText("Completed")).toBeInTheDocument();
+    });
+
+    it("should show error state when fetch fails", async () => {
+      // Given + When the board shell is rendered and the columns API returns an error
+      renderBoardShell({
+        getColumns: () =>
+          Promise.resolve({
+            data: null,
+            error: { status: 500, value: "Server Error" },
+          }),
+      });
+
+      // Then it should display the error message
+      await waitFor(() => {
+        expect(screen.getByText("Failed to load board")).toBeInTheDocument();
+      });
+    });
   });
 
-  it("renders kanban view by default with columns", async () => {
-    renderBoardShell();
-    await waitFor(() => {
-      expect(screen.getByText("To Do")).toBeInTheDocument();
+  describe("view switching", () => {
+    it("should switch to table view when table button is clicked", async () => {
+      // Given the board is rendered in kanban view with columns loaded
+      const user = userEvent.setup();
+      renderBoardShell();
+      await waitFor(() => {
+        expect(screen.getByText("To Do")).toBeInTheDocument();
+      });
+
+      // When the user clicks the Table view button
+      await user.click(screen.getByRole("button", { name: "Table" }));
+
+      // Then the table view should be displayed with its empty state
+      await waitFor(() => {
+        expect(screen.getByText("No tasks yet.")).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByPlaceholderText("Add a task..."),
+      ).not.toBeInTheDocument();
     });
-    expect(screen.getByText("In Progress")).toBeInTheDocument();
-    expect(screen.getByText("Completed")).toBeInTheDocument();
+
+    it("should switch back to board view from table view", async () => {
+      // Given the board is in table view
+      const user = userEvent.setup();
+      renderBoardShell();
+      await waitFor(() => {
+        expect(screen.getByText("To Do")).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole("button", { name: "Table" }));
+      await waitFor(() => {
+        expect(screen.getByText("No tasks yet.")).toBeInTheDocument();
+      });
+
+      // When the user clicks the Board view button
+      await user.click(screen.getByRole("button", { name: "Board" }));
+
+      // Then the kanban view should be displayed with the column creation form
+      await waitFor(() => {
+        expect(
+          screen.getByPlaceholderText("New column..."),
+        ).toBeInTheDocument();
+      });
+    });
   });
 
-  it("shows error state on fetch failure", async () => {
-    renderBoardShell({
-      getColumns: () =>
-        Promise.resolve({
-          data: null,
-          error: { status: 500, value: "Server Error" },
+  describe("column mutations", () => {
+    it("should call create column mutation when form is submitted", async () => {
+      // Given the board is rendered and a mock create column endpoint is set up
+      const postMock = mock(() => Promise.resolve({ data: {}, error: null }));
+      const mockClient = createMockClient();
+      mockClient.api.columns.post = postMock;
+      const { Wrapper } = createQueryWrapper(mockClient);
+      render(<BoardShell />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(screen.getByText("To Do")).toBeInTheDocument();
+      });
+
+      // When the user types a new column name and presses Enter
+      const user = userEvent.setup();
+      const input = screen.getByPlaceholderText("New column...");
+      await user.type(input, "Backlog");
+      await user.type(input, "{Enter}");
+
+      // Then a new column should be created via the API
+      await waitFor(() => {
+        expect(postMock).toHaveBeenCalledWith({ title: "Backlog" });
+      });
+    });
+
+    it("should call rename column mutation when title is edited", async () => {
+      // Given the board is rendered and a mock rename column endpoint is set up
+      const putMock = mock(() => Promise.resolve({ data: {}, error: null }));
+      const mockClient = createMockClient();
+      const originalColumns = mockClient.api.columns;
+      mockClient.api.columns = Object.assign(
+        (_params: { id: number }) => ({
+          put: putMock,
+          delete: () => Promise.resolve({ data: {}, error: null }),
         }),
+        { get: originalColumns.get, post: originalColumns.post },
+      );
+      const { Wrapper } = createQueryWrapper(mockClient);
+      render(<BoardShell />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(screen.getByText("To Do")).toBeInTheDocument();
+      });
+
+      // When the user clicks the column title, clears it, types a new name, and presses Enter
+      const user = userEvent.setup();
+      await user.click(screen.getByText("To Do"));
+      const input = screen.getByDisplayValue("To Do");
+      await user.clear(input);
+      await user.type(input, "Done{Enter}");
+
+      // Then the column should be renamed via the API
+      await waitFor(() => {
+        expect(putMock).toHaveBeenCalledWith({ title: "Done" });
+      });
     });
-    await waitFor(() => {
-      expect(screen.getByText("Failed to load board")).toBeInTheDocument();
+
+    it("should call delete column mutation when delete button is clicked", async () => {
+      // Given the board is rendered and a mock delete column endpoint is set up
+      const deleteMock = mock(() => Promise.resolve({ data: {}, error: null }));
+      const mockClient = createMockClient();
+      const originalColumns = mockClient.api.columns;
+      mockClient.api.columns = Object.assign(
+        (_params: { id: number }) => ({
+          put: () => Promise.resolve({ data: {}, error: null }),
+          delete: deleteMock,
+        }),
+        { get: originalColumns.get, post: originalColumns.post },
+      );
+      const { Wrapper } = createQueryWrapper(mockClient);
+      render(<BoardShell />, { wrapper: Wrapper });
+
+      await waitFor(() => {
+        expect(screen.getByText("To Do")).toBeInTheDocument();
+      });
+
+      // When the user clicks the delete button on the first column
+      const user = userEvent.setup();
+      const deleteButtons = screen.getAllByRole("button", {
+        name: "Delete column",
+      });
+      await user.click(deleteButtons[0]);
+
+      // Then the column should be deleted via the API
+      await waitFor(() => {
+        expect(deleteMock).toHaveBeenCalled();
+      });
     });
-  });
-
-  it("toggles to table view and shows table headers", async () => {
-    const user = userEvent.setup();
-    renderBoardShell();
-
-    await waitFor(() => {
-      expect(screen.getByText("To Do")).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole("button", { name: "Table" }));
-
-    await waitFor(() => {
-      expect(screen.getByText("No tasks yet.")).toBeInTheDocument();
-    });
-
-    // Kanban-specific elements (add task form, column badges) should be gone
-    expect(
-      screen.queryByPlaceholderText("Add a task..."),
-    ).not.toBeInTheDocument();
   });
 });
