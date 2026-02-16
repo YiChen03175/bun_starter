@@ -8,7 +8,7 @@ import type { App } from "@/server";
 //
 // Usage:
 //   Server components / non-React contexts → import { api } from "@/lib/eden"
-//     const { data, error } = await api.api.todos.get();
+//     const { data, error } = await api.api.columns.get();
 // ---------------------------------------------------------------------------
 export const api = treaty<App>(
   typeof window !== "undefined"

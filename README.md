@@ -44,10 +44,13 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + [Shadcn UI](https://ui.shadcn.com/)
 - **Linting/Formatting**: [Biome](https://biomejs.dev/) (no ESLint/Prettier)
 - **Testing**: `bun:test` + [Testing Library](https://testing-library.com/) + [happy-dom](https://github.com/nicedoc/happy-dom)
+- **Git Hooks**: [Lefthook](https://github.com/evilmartians/lefthook) (pre-commit: lint + type-check, pre-push: validate + build)
 
 ## Project Structure
 
 ```
+scripts/
+└── seed.ts                       # Database seed script
 src/
 ├── app/                        # Next.js App Router pages
 │   ├── api/[[...slugs]]/       # Elysia catch-all API route
@@ -68,8 +71,9 @@ src/
     │   ├── index.ts            # Drizzle + Neon connection
     │   └── schema.ts           # Database schema (single source of truth)
     ├── errors/
-    │   ├── http.ts             # Custom error classes (ForbiddenError, ConflictError)
+    │   ├── http.ts             # Custom error classes (UnauthorizedError, ForbiddenError, ConflictError)
     │   └── index.ts            # Error handler Elysia plugin + re-exports
+    ├── logger.ts                # Pino logger (via @bogeychan/elysia-logger)
     ├── plugins/
     │   └── auth.ts              # Elysia auth plugin (mount + auth macro)
     ├── modules/<feature>/
@@ -84,7 +88,8 @@ test/
 │   ├── elysia.ts               # createTestClient() for controller tests
 │   ├── eden-query.tsx          # Test EdenProvider + createQueryWrapper() for React Query
 │   ├── mock-auth.ts            # Mocks auth for controller tests with auth
-│   └── mock-db.ts              # Drizzle mock via Proxy + setQueryResult()
+│   ├── mock-db.ts              # Drizzle mock via Proxy + setQueryResult()
+│   └── mock-logger.ts          # Suppresses logger output in tests
 ├── fixtures/                   # Shared mock data
 ├── server/modules/<feature>/   # Backend tests (controller + service)
 └── app/<route>/_components/    # Frontend component tests
@@ -174,6 +179,8 @@ bun run db:push       # Push schema to database
 bun run db:generate   # Generate migration files
 bun run db:migrate    # Run pending migrations
 bun run db:studio     # Open Drizzle Studio GUI
+bun run db:seed       # Seed database with sample data
+bun run test:coverage # Run tests with coverage report
 ```
 
 ## Testing
@@ -203,7 +210,7 @@ A `.env.test` file sets `LOG_LEVEL=silent` to suppress log output during tests.
 2. Create `src/server/modules/<name>/service.ts` — business logic
 3. Create `src/server/modules/<name>/index.ts` — Elysia controller with routes
 4. Register in `src/server/index.ts` via `.use()`
-5. Add database table in `src/server/db/schema.ts` if needed
+5. Add database table in `src/server/db/schema.ts` if needed, then `bun run db:push`
 
 ### New page
 

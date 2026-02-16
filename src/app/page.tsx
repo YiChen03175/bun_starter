@@ -9,7 +9,7 @@ export default function Home() {
         Full-stack Next.js + Elysia + Drizzle + Shadcn starter template.
       </p>
       <Button asChild>
-        <Link href="/todos">Open Todo App</Link>
+        <Link href="/board">Open Kanban Board</Link>
       </Button>
     </main>
   );

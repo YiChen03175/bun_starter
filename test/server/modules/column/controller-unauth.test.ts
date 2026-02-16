@@ -26,31 +26,31 @@ const serviceMock = {
   }),
 };
 
-mock.module("@/server/modules/todo/service", () => ({
-  TodoService: serviceMock,
+mock.module("@/server/modules/column/service", () => ({
+  ColumnService: serviceMock,
 }));
 
 const { app } = await import("@/server");
 const client = createTestClient(app);
 
-describe("Todo Controller — unauthenticated", () => {
-  it("GET /api/todos — returns 401", async () => {
-    const res = await client.request("/api/todos");
+describe("Column Controller — unauthenticated", () => {
+  it("GET /api/columns — returns 401", async () => {
+    const res = await client.request("/api/columns");
     expect(res.status).toBe(401);
   });
 
-  it("POST /api/todos — returns 401", async () => {
-    const res = await client.json("/api/todos", { title: "Test" });
+  it("POST /api/columns — returns 401", async () => {
+    const res = await client.json("/api/columns", { title: "Test" });
     expect(res.status).toBe(401);
   });
 
-  it("PUT /api/todos/:id — returns 401", async () => {
-    const res = await client.json("/api/todos/1", { completed: true }, "PUT");
+  it("PUT /api/columns/:id — returns 401", async () => {
+    const res = await client.json("/api/columns/1", { title: "Test" }, "PUT");
     expect(res.status).toBe(401);
   });
 
-  it("DELETE /api/todos/:id — returns 401", async () => {
-    const res = await client.request("/api/todos/1", { method: "DELETE" });
+  it("DELETE /api/columns/:id — returns 401", async () => {
+    const res = await client.request("/api/columns/1", { method: "DELETE" });
     expect(res.status).toBe(401);
   });
 });

@@ -22,6 +22,13 @@
       "when": 1771092960843,
       "tag": "0002_cool_franklin_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1771163055102,
+      "tag": "0003_faithful_thunderbolt",
+      "breakpoints": true
     }
   ]
 }

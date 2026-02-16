@@ -2,7 +2,7 @@ import { getSessionCookie } from "better-auth/cookies";
 import { type NextRequest, NextResponse } from "next/server";
 
 const authPages = ["/login", "/signup"];
-const protectedPages = ["/todos"];
+const protectedPages = ["/board"];
 
 export function proxy(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
@@ -22,5 +22,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/signup", "/todos/:path*"],
+  matcher: ["/login", "/signup", "/board/:path*"],
 };

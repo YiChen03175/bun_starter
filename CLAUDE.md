@@ -37,11 +37,14 @@ bun run db:push      # Push schema to database (no migration files)
 bun run db:generate  # Generate migration files
 bun run db:migrate   # Run pending migrations
 bun run db:studio    # Open Drizzle Studio GUI
+bun run db:seed      # Seed database with sample data
 ```
 
 ## Project Structure
 
 ```
+scripts/
+└── seed.ts                     # Database seed script
 src/
 ├── app/                        # Next.js App Router pages
 │   ├── api/[[...slugs]]/       # Elysia catch-all API route
@@ -64,6 +67,7 @@ src/
     ├── errors/
     │   ├── http.ts             # Custom error classes (UnauthorizedError, ForbiddenError, ConflictError)
     │   └── index.ts            # Error handler Elysia plugin + re-exports
+    ├── logger.ts                # Pino logger (via @bogeychan/elysia-logger)
     ├── plugins/
     │   └── auth.ts              # Elysia Better Auth plugin (mount + `auth` macro)
     ├── modules/<feature>/
@@ -78,7 +82,7 @@ test/
 │   ├── testing-library.ts     # Preload: jest-dom matchers + cleanup
 │   └── types.d.ts              # Bun matcher augmentation for jest-dom + __BunRequest global
 ├── helpers/                    # Test utilities (elysia, mock-db, mock-auth, eden-query)
-├── fixtures/                   # Shared mock data (todo.ts, auth.ts)
+├── fixtures/                   # Shared mock data (board.ts, auth.ts)
 ├── server/modules/<feature>/   # Backend tests (controller + service)
 └── app/<route>/_components/    # Frontend component tests
 ```
@@ -103,7 +107,7 @@ test/
 - **Elysia plugin**: `src/server/plugins/auth.ts` — `.mount(auth.handler)` exposes all `/api/auth/*` routes, and defines an `auth` macro for route protection
 - **Protecting routes**: Add `{ auth: true }` to any Elysia route options — the macro resolves `user` and `session` from the request headers (returns 401 if unauthenticated)
 - **Client**: `src/lib/auth-client.ts` exports `signIn`, `signUp`, `signOut`, `useSession` from Better Auth's React client
-- **Proxy**: `src/proxy.ts` — handles auth redirects (uses `getSessionCookie` from `better-auth/cookies`): redirects authenticated users away from `/login`/`/signup`, and unauthenticated users away from protected pages (e.g., `/todos`)
+- **Proxy**: `src/proxy.ts` — handles auth redirects (uses `getSessionCookie` from `better-auth/cookies`): redirects authenticated users away from `/login`/`/signup`, and unauthenticated users away from protected pages (e.g., `/board`)
 - **Protecting a new feature end-to-end**:
   1. **API**: Add `{ auth: true }` to route options, destructure `user` in handlers, pass `user.id` to service methods
   2. **Service**: Add `userId` parameter to methods, scope queries with `eq(table.userId, userId)` (use `and()` for compound where on update/delete)
@@ -148,27 +152,29 @@ test/
 - Check whether you're on **local Postgres** or **cloud Neon** — the workflow differs:
 
 **Local Postgres** (no branching):
-1. Iterate on schema with `bun run db:push` (fast, no migration files)
-2. When the task is done and code is final, generate a migration: `bun run db:generate`
-3. Review the generated SQL in `/drizzle`
-4. Apply it: `bun run db:migrate`
-5. Commit the migration file with the feature
+1. Iterate on schema with `bun run db:push` — this applies directly to the local DB so you can test against it during development
+2. Run `bun run validate` — ensure lint, types, and all tests pass against the pushed schema
+3. Once everything is stable, generate a migration: `bun run db:generate`
+4. Review the generated SQL in `/drizzle`
+5. Apply it: `bun run db:migrate`
+6. Commit the migration file with the feature
 
 **Cloud Neon** (with branching):
 1. Create a branch: `neonctl branches create --name feature-x`
 2. Set `DATABASE_URL` to the branch connection string
-3. Iterate on schema with `bun run db:push` on the branch (safe — main is untouched)
-4. When done, generate a migration: `bun run db:generate`
-5. Switch `DATABASE_URL` back to main, apply: `bun run db:migrate`
-6. Delete the branch: `neonctl branches delete feature-x`
-7. Commit the migration file with the feature
+3. Iterate on schema with `bun run db:push` on the branch — safe to push freely since main is untouched
+4. Run `bun run validate` — ensure everything passes against the branch DB
+5. Once everything is stable, generate a migration: `bun run db:generate`
+6. Switch `DATABASE_URL` back to main, apply: `bun run db:migrate`
+7. Delete the branch: `neonctl branches delete feature-x`
+8. Commit the migration file with the feature
 
 - **Rule**: `db:push` is for prototyping only. Always produce a migration file (`db:generate`) before considering a schema change complete.
 - Neon CLI reference: [neonctl docs](https://neon.com/docs/reference/neon-cli)
 
 ### Frontend
 - **Eden client** (`@/lib/eden`) — single file, two usage patterns:
-  - **Server components / non-React**: `import { api } from "@/lib/eden"` — direct `await api.api.todos.get()` calls
+  - **Server components / non-React**: `import { api } from "@/lib/eden"` — direct `await api.api.columns.get()` calls
   - **Client components**: `import { useEden, useEdenClient } from "@/lib/eden"` — React Query hooks with automatic caching, deduplication, and background revalidation
 - **Client component data fetching**: Use `useEden()` for typed `queryOptions()`/`mutationOptions()`, `useEdenClient()` for manual mutation functions (e.g., parameterized routes with dynamic IDs)
 - **Cache invalidation**: After mutations, invalidate queries via `qc.invalidateQueries({ queryKey: eden.api.<route>.get.queryKey() })`
@@ -192,7 +198,7 @@ test/
 - **Backend tests**: Use `createTestClient()` from `test/helpers/elysia.ts` for controller tests; mock services via `bun:test` `mock.module()`; mock DB via `test/helpers/mock-db.ts` for service tests; import `test/helpers/mock-auth.ts` before importing the app when testing auth-protected routes
 - **Frontend tests**: React Testing Library + `userEvent` for component tests
 - **Coverage**: Write tests for both happy path and error cases (e.g., not-found returning 404); mock services conditionally (e.g., throw `NotFoundError` for specific IDs) to test error paths through controllers
-- **Test location**: Mirror source structure under `test/` (e.g., `test/server/modules/todo/`)
+- **Test location**: Mirror source structure under `test/` (e.g., `test/server/modules/task/`)
 - **Preload scripts**: Configured in `bunfig.toml` — happy-dom globals (with native Request preservation), jest-dom matchers
 - **Helpers** (`test/helpers/`): `elysia.ts` (test client for Elysia `.handle()`), `mock-db.ts` (Drizzle mock with `setQueryResult()`), `eden-query.tsx` (exports test `EdenProvider`/`useEden`/`useEdenClient` for mocking `@/lib/eden`, and `createQueryWrapper(mockClient)` for wrapping components in providers)
 - **Fixtures** (`test/fixtures/`): Shared mock data — import in tests instead of defining inline
