@@ -41,7 +41,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 - **Database**: [Neon](https://neon.tech/) (serverless Postgres) via [Drizzle ORM](https://orm.drizzle.team/); local dev uses `postgres.js` direct TCP
 - **Auth**: [Better Auth](https://www.better-auth.com/) (email/password + Google/GitHub OAuth)
 - **Env Validation**: [@t3-oss/env-nextjs](https://env.t3.gg/) + Zod
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + [Shadcn UI](https://ui.shadcn.com/)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + [Shadcn UI](https://ui.shadcn.com/) ([Base UI](https://base-ui.com/) primitives)
 - **Linting/Formatting**: [Biome](https://biomejs.dev/) (no ESLint/Prettier)
 - **Testing**: `bun:test` + [Testing Library](https://testing-library.com/) + [happy-dom](https://github.com/nicedoc/happy-dom)
 - **Git Hooks**: [Lefthook](https://github.com/evilmartians/lefthook) (pre-commit: lint + type-check, pre-push: validate + build)

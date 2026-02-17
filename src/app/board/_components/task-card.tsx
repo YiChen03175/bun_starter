@@ -42,10 +42,12 @@ export function TaskCard({
           )}
         </div>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-              ...
-            </Button>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" />
+            }
+          >
+            ...
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {otherColumns.map((col) => (

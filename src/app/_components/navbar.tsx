@@ -31,8 +31,8 @@ export function Navbar() {
               </Button>
             </>
           ) : (
-            <Button asChild size="sm">
-              <Link href="/login">Sign in</Link>
+            <Button size="sm" render={<Link href="/login" />}>
+              Sign in
             </Button>
           )}
         </div>

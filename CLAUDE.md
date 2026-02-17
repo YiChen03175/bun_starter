@@ -10,7 +10,7 @@ Full-stack Next.js starter with Elysia API backend, type-safe end-to-end via Ede
 - **API Client**: Eden treaty + eden-tanstack-react-query (type-safe, auto-inferred from Elysia)
 - **Database**: Neon (serverless Postgres) via Drizzle ORM; local dev uses `postgres.js` direct TCP connection
 - **Auth**: Better Auth (email/password + Google/GitHub OAuth) with Elysia integration
-- **Styling**: Tailwind CSS v4 + Shadcn UI
+- **Styling**: Tailwind CSS v4 + Shadcn UI (Base UI primitives, `base-vega` style)
 - **Linting/Formatting**: Biome (no ESLint/Prettier)
 - **Env Validation**: t3-oss/env-nextjs + Zod
 - **Testing**: bun:test + Testing Library + happy-dom
@@ -281,7 +281,8 @@ Before/after example:
 - **Async operations**: `"use client"` components should handle loading/disabled states (e.g., `submitting` state in forms)
 - Use `cn()` from `@/lib/utils` for conditional classNames (not template literal concatenation)
 - **`_components/` convention** — colocate page-specific components in a private folder next to the page
-- Use `bunx --bun shadcn@latest add <component>` to add new Shadcn components
+- **Shadcn uses Base UI primitives** (`base-vega` style in `components.json`) — no Radix UI. Use `render` prop for polymorphic rendering (e.g., `<Button render={<Link href="/x" />}>Label</Button>`), not `asChild`
+- Use `bunx --bun shadcn@latest add <component>` to add new Shadcn components (installs only what you need)
 - `src/components/ui/` is generated code — Biome (linting, formatting, import sorting) and test coverage are all disabled for this folder
 - Biome handles formatting and linting — run `bun run lint:fix` before committing
 

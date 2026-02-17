@@ -8,9 +8,7 @@ export default function Home() {
       <p className="mb-8 text-muted-foreground">
         Full-stack Next.js + Elysia + Drizzle + Shadcn starter template.
       </p>
-      <Button asChild>
-        <Link href="/board">Open Kanban Board</Link>
-      </Button>
+      <Button render={<Link href="/board" />}>Open Kanban Board</Button>
     </main>
   );
 }
