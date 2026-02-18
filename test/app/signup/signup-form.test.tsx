@@ -60,6 +60,7 @@ describe("SignupForm", () => {
 
   describe("rendering", () => {
     it("should display all form fields", () => {
+      // Acceptance: AU01-US2.6
       // Given the signup form is rendered with all providers enabled
       render(<SignupForm enabledProviders={{ google: true, github: true }} />);
 
@@ -71,6 +72,7 @@ describe("SignupForm", () => {
     });
 
     it("should display create account button", () => {
+      // Acceptance: AU01-US2.6
       // Given the signup form is rendered
       render(<SignupForm enabledProviders={{ google: true, github: true }} />);
 
@@ -81,6 +83,7 @@ describe("SignupForm", () => {
     });
 
     it("should display social login buttons", () => {
+      // Acceptance: AU01-US3.5
       // Given the signup form is rendered with Google and GitHub enabled
       render(<SignupForm enabledProviders={{ google: true, github: true }} />);
 
@@ -94,6 +97,7 @@ describe("SignupForm", () => {
     });
 
     it("should display sign in link with correct href", () => {
+      // Acceptance: AU01-US2.6
       // Given the signup form is rendered
       render(<SignupForm enabledProviders={{ google: true, github: true }} />);
 
@@ -106,6 +110,7 @@ describe("SignupForm", () => {
 
   describe("form submission", () => {
     it("should call signUp.email and navigate when form is valid", async () => {
+      // Acceptance: AU01-US2.1
       // Given the signup form is rendered
       render(<SignupForm enabledProviders={{ google: true, github: true }} />);
 
@@ -129,6 +134,7 @@ describe("SignupForm", () => {
     });
 
     it("should show loading state while submitting", async () => {
+      // Acceptance: AU01-US2.4, AU01-CC1
       // Given signUp.email is configured to never resolve (simulating slow network)
       signUpEmail.mockImplementation(() => new Promise(() => {}));
       render(<SignupForm enabledProviders={{ google: true, github: true }} />);
@@ -149,6 +155,7 @@ describe("SignupForm", () => {
     });
 
     it("should show error when passwords do not match", async () => {
+      // Acceptance: AU01-US2.2
       // Given the signup form is rendered
       render(<SignupForm enabledProviders={{ google: true, github: true }} />);
 
@@ -170,6 +177,7 @@ describe("SignupForm", () => {
 
   describe("social login", () => {
     it("should call signIn.social with google provider when Google button is clicked", async () => {
+      // Acceptance: AU01-US3.3
       // Given the signup form is rendered with Google enabled
       render(<SignupForm enabledProviders={{ google: true, github: true }} />);
 
@@ -184,6 +192,7 @@ describe("SignupForm", () => {
     });
 
     it("should call signIn.social with github provider when GitHub button is clicked", async () => {
+      // Acceptance: AU01-US3.4
       // Given the signup form is rendered with GitHub enabled
       render(<SignupForm enabledProviders={{ google: true, github: true }} />);
 
@@ -200,6 +209,7 @@ describe("SignupForm", () => {
 
   describe("error handling", () => {
     it("should show API error message when signup fails", async () => {
+      // Acceptance: AU01-US2.3
       // Given signUp.email returns an error response with "Email already exists"
       signUpEmail.mockImplementation(() =>
         Promise.resolve({
@@ -222,9 +232,23 @@ describe("SignupForm", () => {
         );
       });
       expect(pushMock).not.toHaveBeenCalled();
+
+      // Acceptance: AU01-CC2
+      // Then the form should retain the user's input so they can retry without retyping
+      expect(screen.getByLabelText(/name/i)).toHaveValue(mockCredentials.name);
+      expect(screen.getByLabelText(/email/i)).toHaveValue(
+        mockCredentials.email,
+      );
+      expect(screen.getByLabelText("Password")).toHaveValue(
+        mockCredentials.password,
+      );
+      expect(screen.getByLabelText(/confirm password/i)).toHaveValue(
+        mockCredentials.password,
+      );
     });
 
     it("should show fallback error when an exception occurs", async () => {
+      // Acceptance: AU01-US2.5, AU01-CC3
       // Given signUp.email throws a network error
       signUpEmail.mockImplementation(() =>
         Promise.reject(new Error("Network error")),

@@ -37,6 +37,7 @@ describe("LoginForm", () => {
 
   describe("rendering", () => {
     it("should display email and password fields", () => {
+      // Acceptance: AU01-US1.5
       // Given the login form is rendered with all providers enabled
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
 
@@ -46,6 +47,7 @@ describe("LoginForm", () => {
     });
 
     it("should display login button", () => {
+      // Acceptance: AU01-US1.5
       // Given the login form is rendered
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
 
@@ -54,6 +56,7 @@ describe("LoginForm", () => {
     });
 
     it("should display social login buttons", () => {
+      // Acceptance: AU01-US3.5
       // Given the login form is rendered with Google and GitHub enabled
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
 
@@ -67,6 +70,7 @@ describe("LoginForm", () => {
     });
 
     it("should display sign up link with correct href", () => {
+      // Acceptance: AU01-US1.5
       // Given the login form is rendered
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
 
@@ -79,6 +83,7 @@ describe("LoginForm", () => {
 
   describe("form submission", () => {
     it("should call signIn.email and navigate when credentials are valid", async () => {
+      // Acceptance: AU01-US1.1
       // Given the login form is rendered
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
 
@@ -106,6 +111,7 @@ describe("LoginForm", () => {
     });
 
     it("should show loading state while submitting", async () => {
+      // Acceptance: AU01-US1.3, AU01-CC1
       // Given signIn.email is configured to never resolve (simulating slow network)
       signInEmail.mockImplementation(() => new Promise(() => {}));
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
@@ -131,6 +137,7 @@ describe("LoginForm", () => {
 
   describe("social login", () => {
     it("should call signIn.social with google provider when Google button is clicked", async () => {
+      // Acceptance: AU01-US3.1
       // Given the login form is rendered with Google enabled
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
 
@@ -145,6 +152,7 @@ describe("LoginForm", () => {
     });
 
     it("should call signIn.social with github provider when GitHub button is clicked", async () => {
+      // Acceptance: AU01-US3.2
       // Given the login form is rendered with GitHub enabled
       render(<LoginForm enabledProviders={{ google: true, github: true }} />);
 
@@ -161,6 +169,7 @@ describe("LoginForm", () => {
 
   describe("error handling", () => {
     it("should show API error message when login fails", async () => {
+      // Acceptance: AU01-US1.2
       // Given signIn.email returns an error response with "Invalid credentials"
       signInEmail.mockImplementation(() =>
         Promise.resolve({
@@ -182,9 +191,15 @@ describe("LoginForm", () => {
         );
       });
       expect(pushMock).not.toHaveBeenCalled();
+
+      // Acceptance: AU01-CC2
+      // Then the form should retain the user's input so they can retry without retyping
+      expect(screen.getByLabelText(/email/i)).toHaveValue("bad@example.com");
+      expect(screen.getByLabelText(/password/i)).toHaveValue("wrong");
     });
 
     it("should show fallback error when an exception occurs", async () => {
+      // Acceptance: AU01-US1.4, AU01-CC3
       // Given signIn.email throws a network error
       signInEmail.mockImplementation(() =>
         Promise.reject(new Error("Network error")),

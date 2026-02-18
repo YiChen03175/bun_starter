@@ -14,6 +14,7 @@ describe("ColumnHeader", () => {
 
   describe("rendering", () => {
     it("should display title and task count", () => {
+      // Acceptance: KB01-US1.2
       // Given a column header is rendered with title "To Do" and 3 tasks
       render(<ColumnHeader {...defaults} />);
 
@@ -25,6 +26,7 @@ describe("ColumnHeader", () => {
 
   describe("editing", () => {
     it("should enter edit mode when title is clicked", async () => {
+      // Acceptance: KB01-US1.4
       // Given a column header is rendered in display mode
       render(<ColumnHeader {...defaults} />);
 
@@ -36,6 +38,7 @@ describe("ColumnHeader", () => {
     });
 
     it("should save on form submit when title changes", async () => {
+      // Acceptance: KB01-US1.4
       // Given a column header is rendered with an onRename callback
       const onRename = mock();
       render(<ColumnHeader {...defaults} onRename={onRename} />);
@@ -51,6 +54,7 @@ describe("ColumnHeader", () => {
     });
 
     it("should save on blur when clicking outside", async () => {
+      // Acceptance: KB01-US1.4
       // Given a column header is in edit mode with a changed title
       const onRename = mock();
       render(
@@ -72,6 +76,7 @@ describe("ColumnHeader", () => {
     });
 
     it("should skip rename when title is unchanged", async () => {
+      // Acceptance: KB01-US1.4
       // Given a column header is rendered with an onRename callback
       const onRename = mock();
       render(<ColumnHeader {...defaults} onRename={onRename} />);
@@ -85,6 +90,7 @@ describe("ColumnHeader", () => {
     });
 
     it("should skip rename on blur when delete button is clicked", async () => {
+      // Acceptance: KB01-US1.7
       // Given a column header is in edit mode with a changed title
       const onRename = mock();
       const onDelete = mock();
@@ -111,6 +117,7 @@ describe("ColumnHeader", () => {
 
   describe("deleting", () => {
     it("should call onDelete when delete button is clicked", async () => {
+      // Acceptance: KB01-US1.5
       // Given a column header is rendered with an onDelete callback
       const onDelete = mock();
       render(<ColumnHeader {...defaults} onDelete={onDelete} />);

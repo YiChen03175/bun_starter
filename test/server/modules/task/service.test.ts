@@ -1,7 +1,7 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
 import { NotFoundError } from "elysia";
 import { mockTask, mockTaskTwo } from "test/fixtures/board";
-import { setQueryResult } from "test/helpers/mock-db";
+import { setQueryResult, setQueryResultFn } from "test/helpers/mock-db";
 
 const { TaskService } = await import("@/server/modules/task/service");
 
@@ -9,8 +9,13 @@ const userId = "test-user-id";
 
 describe("TaskService", () => {
   // Business logic for task management — tasks belong to a column and are scoped to a userId
+  afterEach(() => {
+    setQueryResultFn(null);
+  });
+
   describe("listing tasks", () => {
     it("should return tasks with total count", async () => {
+      // Acceptance: KB01-US2.1
       // Given the user has two tasks
       setQueryResult([
         Object.assign({ ...mockTask }, { total: 2 }),
@@ -26,6 +31,7 @@ describe("TaskService", () => {
     });
 
     it("should filter by columnId when provided", async () => {
+      // Acceptance: KB01-US2.1
       // Given the user has tasks in column 1
       setQueryResult([Object.assign({ ...mockTask }, { total: 1 })]);
 
@@ -41,6 +47,7 @@ describe("TaskService", () => {
     });
 
     it("should respect pagination parameters", async () => {
+      // Acceptance: KB01-US2.5
       // Given the user has tasks spanning multiple pages
       setQueryResult([Object.assign({ ...mockTaskTwo }, { total: 1 })]);
 
@@ -57,6 +64,7 @@ describe("TaskService", () => {
 
   describe("creating a task", () => {
     it("should return the created task", async () => {
+      // Acceptance: KB01-US2.1
       // Given valid task data for column 1
       setQueryResult([mockTask]);
 
@@ -71,11 +79,12 @@ describe("TaskService", () => {
     });
 
     it("should throw NotFoundError when column does not exist", async () => {
+      // Acceptance: KB01-US2.1 (validation)
       // Given the target column does not exist
       setQueryResult([]);
 
       // Then creating a task in a non-existent column should throw NotFoundError
-      expect(
+      await expect(
         TaskService.create({ title: "Test", columnId: 999 }, userId),
       ).rejects.toBeInstanceOf(NotFoundError);
     });
@@ -83,6 +92,7 @@ describe("TaskService", () => {
 
   describe("updating a task", () => {
     it("should return the updated task", async () => {
+      // Acceptance: KB01-US3.2
       // Given the task exists and the user owns it
       const updated = { ...mockTask, title: "Updated" };
       setQueryResult([updated]);
@@ -95,6 +105,7 @@ describe("TaskService", () => {
     });
 
     it("should verify target column when moving to a different column", async () => {
+      // Acceptance: KB01-US3.2
       // Given the task exists and the target column is valid
       setQueryResult([mockTask]);
 
@@ -106,21 +117,23 @@ describe("TaskService", () => {
     });
 
     it("should throw NotFoundError when target column does not exist", async () => {
+      // Acceptance: KB01-US3.2 (validation)
       // Given the target column does not exist
       setQueryResult([]);
 
       // Then moving a task to a non-existent column should throw NotFoundError
-      expect(
+      await expect(
         TaskService.update(1, { columnId: 999 }, userId),
       ).rejects.toBeInstanceOf(NotFoundError);
     });
 
     it("should throw NotFoundError when task does not exist", async () => {
+      // Acceptance: KB01-US3.2 (validation)
       // Given the task does not exist
       setQueryResult([]);
 
       // Then updating a non-existent task should throw NotFoundError
-      expect(
+      await expect(
         TaskService.update(999, { title: "Nope" }, userId),
       ).rejects.toBeInstanceOf(NotFoundError);
     });
@@ -128,6 +141,7 @@ describe("TaskService", () => {
 
   describe("removing a task", () => {
     it("should return the deleted task when it exists", async () => {
+      // Acceptance: KB01-US2.3
       // Given the task exists and the user owns it
       setQueryResult([mockTask]);
 
@@ -139,13 +153,26 @@ describe("TaskService", () => {
     });
 
     it("should throw NotFoundError when task does not exist", async () => {
+      // Acceptance: KB01-US2.3 (validation)
       // Given the task does not exist
       setQueryResult([]);
 
       // Then removing a non-existent task should throw NotFoundError
-      expect(TaskService.remove(999, userId)).rejects.toBeInstanceOf(
+      await expect(TaskService.remove(999, userId)).rejects.toBeInstanceOf(
         NotFoundError,
       );
+    });
+
+    it("should not remove a task that belongs to a different user", async () => {
+      // Acceptance: KB01-US5.2
+      // Given a task exists but belongs to a different user (query returns empty due to userId mismatch)
+      setQueryResult([]);
+
+      // When another user tries to remove it
+      // Then NotFoundError should be thrown because the AND(id, userId) query returns no rows
+      await expect(
+        TaskService.remove(1, "different-user-id"),
+      ).rejects.toBeInstanceOf(NotFoundError);
     });
   });
 });

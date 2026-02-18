@@ -93,6 +93,7 @@ describe("BoardShell", () => {
     });
 
     it("should render kanban view with columns by default", async () => {
+      // Acceptance: KB01-US1.2
       // Given + When the board shell is rendered with default columns
       renderBoardShell();
 
@@ -105,6 +106,7 @@ describe("BoardShell", () => {
     });
 
     it("should show error state when fetch fails", async () => {
+      // Acceptance: KB01-CC3
       // Given + When the board shell is rendered and the columns API returns an error
       renderBoardShell({
         getColumns: () =>
@@ -123,6 +125,7 @@ describe("BoardShell", () => {
 
   describe("view switching", () => {
     it("should switch to table view when table button is clicked", async () => {
+      // Acceptance: KB01-US4.1
       // Given the board is rendered in kanban view with columns loaded
       const user = userEvent.setup();
       renderBoardShell();
@@ -143,6 +146,7 @@ describe("BoardShell", () => {
     });
 
     it("should switch back to board view from table view", async () => {
+      // Acceptance: KB01-US4.4
       // Given the board is in table view
       const user = userEvent.setup();
       renderBoardShell();
@@ -168,6 +172,7 @@ describe("BoardShell", () => {
 
   describe("column mutations", () => {
     it("should call create column mutation when form is submitted", async () => {
+      // Acceptance: KB01-US1.3
       // Given the board is rendered and a mock create column endpoint is set up
       const postMock = mock(() => Promise.resolve({ data: {}, error: null }));
       const mockClient = createMockClient();
@@ -192,6 +197,7 @@ describe("BoardShell", () => {
     });
 
     it("should call rename column mutation when title is edited", async () => {
+      // Acceptance: KB01-US1.4
       // Given the board is rendered and a mock rename column endpoint is set up
       const putMock = mock(() => Promise.resolve({ data: {}, error: null }));
       const mockClient = createMockClient();
@@ -224,6 +230,7 @@ describe("BoardShell", () => {
     });
 
     it("should call delete column mutation when delete button is clicked", async () => {
+      // Acceptance: KB01-US1.5
       // Given the board is rendered and a mock delete column endpoint is set up
       const deleteMock = mock(() => Promise.resolve({ data: {}, error: null }));
       const mockClient = createMockClient();

@@ -82,6 +82,7 @@ describe("TableView", () => {
   // Flat table view of all tasks across columns with pagination and delete
   describe("rendering", () => {
     it("should show loading state initially", () => {
+      // Acceptance: KB01-US4.1
       // Given + When the table view is rendered with a query that never resolves
       renderTableView({
         getTasks: () => new Promise(() => {}),
@@ -92,6 +93,7 @@ describe("TableView", () => {
     });
 
     it("should render tasks in table when loaded", async () => {
+      // Acceptance: KB01-US4.1
       // Given + When the table view is rendered with tasks in two columns
       renderTableView();
 
@@ -105,6 +107,7 @@ describe("TableView", () => {
     });
 
     it("should show empty state when no tasks exist", async () => {
+      // Acceptance: KB01-US4.1
       // Given + When the table view is rendered with an empty task list
       renderTableView({
         getTasks: () =>
@@ -120,6 +123,7 @@ describe("TableView", () => {
 
   describe("pagination", () => {
     it("should show pagination info", async () => {
+      // Acceptance: KB01-US4.2
       // Given + When the table view is rendered with 2 tasks
       renderTableView();
 
@@ -130,6 +134,7 @@ describe("TableView", () => {
     });
 
     it("should paginate forward and backward", async () => {
+      // Acceptance: KB01-US4.2
       // Given 21 tasks exist and the table view shows the first page
       const tasks = Array.from({ length: 21 }, (_, i) => ({
         id: i + 1,
@@ -186,6 +191,7 @@ describe("TableView", () => {
 
   describe("error handling", () => {
     it("should show empty state when query fails", async () => {
+      // Acceptance: KB01-CC3
       // Given + When the table view is rendered and the API rejects with an error
       renderTableView({
         getTasks: () => Promise.reject(new Error("Server Error")),
@@ -200,6 +206,7 @@ describe("TableView", () => {
 
   describe("task actions", () => {
     it("should call delete mutation when delete button is clicked", async () => {
+      // Acceptance: KB01-US4.3
       // Given the table view is rendered with tasks and a mock delete endpoint
       const deleteMock = mock(() => Promise.resolve({ data: {}, error: null }));
       const mockClient = {

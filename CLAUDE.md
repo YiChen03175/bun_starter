@@ -45,6 +45,9 @@ bun run db:seed      # Seed database with sample data
 ```
 scripts/
 └── seed.ts                     # Database seed script
+specs/
+└── <XX##-feature-name>/        # XX = 2-letter code, ## = number (e.g., KB01-kanban-board)
+    └── spec.md                 # Feature specification (acceptance scenarios, entities, decisions)
 src/
 ├── app/                        # Next.js App Router pages
 │   ├── api/[[...slugs]]/       # Elysia catch-all API route
@@ -83,19 +86,45 @@ test/
 │   └── types.d.ts              # Bun matcher augmentation for jest-dom + __BunRequest global
 ├── helpers/                    # Test utilities (elysia, mock-db, mock-auth, eden-query)
 ├── fixtures/                   # Shared mock data (board.ts, auth.ts)
-├── server/modules/<feature>/   # Backend tests (controller + service)
+├── server/
+│   ├── errors/                 # Error handler + custom error tests
+│   ├── modules/<feature>/      # Backend tests (controller + service)
+│   └── plugins/                # Plugin tests (auth, proxy)
 └── app/<route>/_components/    # Frontend component tests
 ```
 
+## Core Principles
+
+These are non-negotiable project-wide rules. All feature specs, implementation plans, and code reviews MUST comply.
+
+### I. Type Safety End-to-End
+All data is typed at the boundary where it is defined and inferred everywhere else. `Elysia.t` (TypeBox) is the single source of truth for API schemas — no duplicate interfaces. Eden treaty propagates server types to client. Drizzle `$inferInsert`/`$inferSelect` derive DB types from schema. Zod is scoped exclusively to env validation in `src/env.ts`.
+
+### II. Spec-Driven Development
+Every feature begins with a spec (`specs/<XX##-feature-name>/spec.md`) containing user stories, acceptance scenarios, key entities, and key decisions. Each spec declares a **feature code** (e.g., `KB01`) in its header. Acceptance IDs within a spec use format (`US1.1`, `CC1`). Tests link back to acceptance scenarios via `// Acceptance: KB01-US1.1` comments (prefixed with the feature code for global uniqueness), keeping spec and tests in sync. See [Feature Development](#feature-development-spec-driven) for the full workflow.
+
+### III. Validation Gates (NON-NEGOTIABLE)
+`bun run validate` (lint + type-check + tests) MUST pass after every task. No code may be pushed that fails these gates. Schema changes MUST produce a migration file (`db:generate`) before being considered complete — `db:push` is for prototyping only.
+
+### IV. Simplicity & YAGNI
+Changes MUST be limited to what is directly requested or clearly necessary. No speculative abstractions, premature helpers, extra configurability, or feature flags for hypothetical future requirements. Three similar lines of code are preferable to a premature abstraction. Error handling and validation MUST only be added at system boundaries (user input, external APIs) — internal code trusts framework guarantees.
+
+### V. Convention Over Configuration
+The project enforces consistent patterns: path aliases (`@/*` for `src/*`), module structure (`model.ts` → `service.ts` → `index.ts`), page structure (`page.tsx` + `_components/`), named Elysia plugins, and official CLIs over manual implementation. Details in [Conventions](#conventions).
+
 ## Development Workflow
 
-### Feature Development (BDD Spec-First)
+### Feature Development (Spec-Driven)
 
-When developing a new feature or modifying an existing one, follow this spec-first workflow to produce **code as spec** — living documentation that serves both humans and AI for future follow-up.
+When developing a new feature or modifying an existing one, follow this spec-driven workflow. The spec and tests together form the **single source of truth** for feature behavior.
 
-1. **Understand / clarify** — Read the feature request carefully. Ask clarifying questions before writing any code. Identify affected layers (API, service, frontend, schema).
+1. **Clarify requirements** — Read the feature request carefully. Ask clarifying questions before writing any code. Identify affected layers (API, service, frontend, schema).
 
-2. **Write BDD test skeletons** — Before implementing, produce test files with `describe`/`it` blocks and GWT comments that capture the expected behavior. These are **spec-only** — no assertions or real test logic yet. They are part of the feature.
+2. **Create/modify the spec** — Write the spec following [Principle II](#ii-spec-driven-development). See `specs/.templates/spec.template.md` for the template. The spec is reviewed during **plan mode** before implementation begins.
+
+3. **Implement the feature** — Write the production code (schema, service, controller, frontend components) following existing conventions.
+
+4. **Write/modify tests based on spec** — Create tests that map to the spec's acceptance scenarios, referencing acceptance IDs per [Principle II](#ii-spec-driven-development). Tests use BDD style with GWT comments as living documentation. If implementation reveals missing scenarios, update the spec first, then add corresponding tests.
 
    ```typescript
    describe("TaskService", () => {
@@ -103,12 +132,14 @@ When developing a new feature or modifying an existing one, follow this spec-fir
 
      describe("creating a task", () => {
        it("should persist the task when data is valid", async () => {
+         // Acceptance: KB01-US2.1
          // Given valid task data for column 1
          // When the service creates the task
          // Then the task should be persisted and returned
        });
 
        it("should reject when the target column does not exist", async () => {
+         // Acceptance: KB01-US2.1 (validation)
          // Given the target column does not exist
          // When the service tries to create a task in that column
          // Then it should throw NotFoundError
@@ -117,13 +148,7 @@ When developing a new feature or modifying an existing one, follow this spec-fir
    });
    ```
 
-   Follow the [BDD Comment Guidelines](#bdd-comment-guidelines) — describe business state and user intent, not mocks or implementation.
-
-3. **Implement the feature** — Write the production code (schema, service, controller, frontend components) following existing conventions.
-
-4. **Fill in the tests** — Replace the skeletons with real assertions, mocks, and test logic. The GWT comments stay as-is — they are the spec. If implementation reveals missing scenarios, loop back to step 2 to add new skeletons, get confirmation, then continue.
-
-**Why this order**: Writing specs first forces agreement on behavior before code exists. The resulting tests double as feature documentation that stays in sync with the codebase.
+**Why this order**: The spec captures intent and decisions (the "what" and "why") while tests verify behavior (the "how"). The spec is the source of truth for requirements; tests are the source of truth for correctness. Acceptance IDs link them bidirectionally.
 
 ### Adding a New API Module
 1. Create `src/server/modules/<name>/model.ts` — define Elysia.t schemas
@@ -159,11 +184,9 @@ When developing a new feature or modifying an existing one, follow this spec-fir
 7. Delete the branch: `neonctl branches delete feature-x`
 8. Commit the migration file with the feature
 
-- **Rule**: `db:push` is for prototyping only. Always produce a migration file (`db:generate`) before considering a schema change complete.
 - Neon CLI reference: [neonctl docs](https://neon.com/docs/reference/neon-cli)
 
 ### Validation
-- **`bun run validate`**: Run after every task — lint + type-check + tests
 - **Pre-commit** (automatic): `biome check --write` on staged files + `tsc --noEmit` (in parallel)
 - **Pre-push** (automatic): `bun run validate` + `bun run build` — full verification before pushing
 - **Auto-fix**: Biome fixes are re-staged automatically (`stage_fixed: true`)
@@ -179,12 +202,13 @@ When developing a new feature or modifying an existing one, follow this spec-fir
 - **Coverage**: Write tests for both happy path and error cases (e.g., not-found returning 404); mock services conditionally (e.g., throw `NotFoundError` for specific IDs) to test error paths through controllers
 - **Test location**: Mirror source structure under `test/` (e.g., `test/server/modules/task/`)
 - **Preload scripts**: Configured in `bunfig.toml` — happy-dom globals (with native Request preservation), jest-dom matchers
-- **Helpers** (`test/helpers/`): `elysia.ts` (test client for Elysia `.handle()`), `mock-db.ts` (Drizzle mock), `eden-query.tsx` (exports test `EdenProvider`/`useEden`/`useEdenClient` for mocking `@/lib/eden`, and `createQueryWrapper(mockClient)` for wrapping components in providers)
+- **Helpers** (`test/helpers/`): `elysia.ts` (test client for Elysia `.handle()`), `mock-db.ts` (Drizzle mock), `mock-auth.ts` (Better Auth mock for controller tests), `mock-logger.ts` (suppresses Pino logs in tests), `eden-query.tsx` (exports test `EdenProvider`/`useEden`/`useEdenClient` for mocking `@/lib/eden`, and `createQueryWrapper(mockClient)` for wrapping components in providers)
 - **Fixtures** (`test/fixtures/`): Shared mock data — import in tests instead of defining inline
 - **Coverage**: `bun run test:coverage` — prints per-file function and line coverage to the terminal; Shadcn UI components (`src/components/ui/`), env validation (`src/env.ts`), DB schema (`src/server/db/schema.ts`), and test infrastructure (`test/setup/`, `test/helpers/`, `test/fixtures/`) are excluded via `coveragePathIgnorePatterns` in `bunfig.toml`
 
 ### Test Style (BDD / Given-When-Then)
 - **All tests follow BDD style** — use `// Given <description>`, `// When <description>`, `// Then <description>` comments as **descriptive behavior specs** inside every test body
+- **Acceptance traceability**: Each test starts with `// Acceptance: XX##-USx.x` (feature code + spec ID) per [Principle II](#ii-spec-driven-development). Multiple tests can reference the same ID (e.g., service, controller, and component tests all verifying `KB01-US2.1`).
 - **Comments are specs**: Each GWT comment is a natural language sentence describing the precondition, action, or expected outcome — not a bare marker. They serve as living documentation for the product behavior.
 - **`it()` names**: Follow `"should [expected outcome] when [condition/action]"` pattern (use `it()`, not `test()`)
 - **Describe blocks**: Top-level = component/module name, nested = scenario group (e.g., `"rendering"`, `"creating a task"`, `"error handling"`)
@@ -223,7 +247,6 @@ Before/after example:
 - **Service**: Business logic — no HTTP context dependency
 - **Controller**: Elysia instance as controller, inject models via `.use()`, compose into root app
 - **HTTP status codes**: Use proper code (e.g. `201` for resource creation, `404` for not found) — don't default everything to 200
-- Use `Elysia.t` as single source of truth for types (not separate interfaces)
 - Name plugins (`{ name: "Feature.Model" }`) to enable deduplication
 
 ### Authentication (Better Auth)
@@ -245,7 +268,7 @@ Before/after example:
 - **Server/client boundary**: server vars are only accessible in server code; client vars must be prefixed with `NEXT_PUBLIC_`
 - **Build-time validation**: `next.config.ts` imports `src/env.ts` so missing vars fail the build early
 - **Tests**: `SKIP_ENV_VALIDATION=1` in `.env.test` bypasses validation during test runs
-- **Zod scope**: Zod is used **only** for env validation in `src/env.ts` — use `Elysia.t` (TypeBox) for all API/request/response validation
+- **Zod scope**: See [Principle I](#i-type-safety-end-to-end) for type system boundaries
 
 ### Error Handling
 
@@ -277,7 +300,6 @@ Before/after example:
 - **Client component data fetching**: Use `useEden()` for typed `queryOptions()`/`mutationOptions()`, `useEdenClient()` for manual mutation functions (e.g., parameterized routes with dynamic IDs)
 - **Cache invalidation**: After mutations, invalidate queries via `qc.invalidateQueries({ queryKey: eden.api.<route>.get.queryKey() })`
 - **Server components by default** — only add `"use client"` where interactivity is needed
-- **Error handling**: Always check Eden `{ data, error }` responses; show error state in UI
 - **Async operations**: `"use client"` components should handle loading/disabled states (e.g., `submitting` state in forms)
 - Use `cn()` from `@/lib/utils` for conditional classNames (not template literal concatenation)
 - **`_components/` convention** — colocate page-specific components in a private folder next to the page
@@ -301,6 +323,8 @@ Before/after example:
 ### Testing
 - **Verify mutation payloads, not just invocation.** `toHaveBeenCalled()` on a mock only proves it was invoked — a bug changing the payload goes undetected. Use `toHaveBeenCalledWith(expectedPayload)` on post/put mocks. Delete mocks that take no args are fine with `toHaveBeenCalled()`.
 - **Use rendered elements, not manual DOM construction.** Don't use `document.createElement` to fabricate elements for `fireEvent` — use real elements from `render()` or add a sibling in the JSX. If you need `relatedTarget` for blur behavior, render a sibling button and `userEvent.click` it instead of creating a fake element and calling `fireEvent.blur`.
+- **Always `await` the `.rejects` chain.** `await expect(promise).rejects.toBeInstanceOf(Error)` is required — without `await`, the assertion is a floating promise that silently passes (false positive). TypeScript shows a `ts(80007)` hint ("await has no effect") because bun-types declares `.rejects` matchers as returning `void`, but at runtime they return a `Promise`. The hint is a type definition gap — ignore it, the `await` is necessary.
+- **Assert on user-visible changes for async state transitions.** When testing intermediate states (e.g., button disabled during submission), query by the visible label change (`getByRole("button", { name: "Adding..." })`) and use `waitFor` to assert the final state. Never use manual `setTimeout` flushes or raw `act()` — RTL's `waitFor`/`findBy` wrap `act()` automatically and avoid the "not wrapped in act" warning.
 
 ## Self-update (CLAUDE.md)
 - **When to update**: After any fundamental change — new folder structure, new infrastructure (e.g., test framework, CI), new conventions, new commands, or dependency changes that affect workflow
