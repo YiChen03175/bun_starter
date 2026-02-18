@@ -15,6 +15,7 @@ describe("ColumnService", () => {
 
   describe("listing columns", () => {
     it("should return existing columns when user has columns", async () => {
+      // Acceptance: KB01-US1.2
       // Given the user has existing columns
       setQueryResult(defaultColumns);
 
@@ -25,7 +26,27 @@ describe("ColumnService", () => {
       expect(cols).toEqual(defaultColumns);
     });
 
+    it("should not return another user's columns", async () => {
+      // Acceptance: KB01-US5.1
+      // Given user A has columns but user B has none
+      let callCount = 0;
+      setQueryResultFn(() => {
+        callCount++;
+        // First call (select for user B) returns empty → triggers default creation
+        // Second call (insert .returning()) returns the new defaults
+        return callCount === 1 ? [] : defaultColumns;
+      });
+
+      // When user B lists their columns
+      const cols = await ColumnService.list("different-user-id");
+
+      // Then user B should only see their own default columns, not user A's data
+      expect(cols).toEqual(defaultColumns);
+      expect(cols).toHaveLength(3);
+    });
+
     it("should create default columns when user has none", async () => {
+      // Acceptance: KB01-US1.1
       // Given the user has no columns yet
       let callCount = 0;
       setQueryResultFn(() => {
@@ -47,6 +68,7 @@ describe("ColumnService", () => {
 
   describe("creating a column", () => {
     it("should return the created column", async () => {
+      // Acceptance: KB01-US1.3
       // Given valid column data
       setQueryResult([mockColumn]);
 
@@ -60,6 +82,7 @@ describe("ColumnService", () => {
 
   describe("updating a column", () => {
     it("should return the updated column when it exists", async () => {
+      // Acceptance: KB01-US1.4
       // Given a column exists that the user owns
       const updated = { ...mockColumn, title: "Done" };
       setQueryResult([updated]);
@@ -72,11 +95,12 @@ describe("ColumnService", () => {
     });
 
     it("should throw NotFoundError when column does not exist", async () => {
+      // Acceptance: KB01-US1.4 (validation)
       // Given the column does not exist
       setQueryResult([]);
 
       // Then updating a non-existent column should throw NotFoundError
-      expect(
+      await expect(
         ColumnService.update(999, { title: "Nope" }, userId),
       ).rejects.toBeInstanceOf(NotFoundError);
     });
@@ -84,6 +108,7 @@ describe("ColumnService", () => {
 
   describe("removing a column", () => {
     it("should return the deleted column when it exists", async () => {
+      // Acceptance: KB01-US1.5
       // Given a column exists that the user owns
       setQueryResult([mockColumn]);
 
@@ -95,13 +120,26 @@ describe("ColumnService", () => {
     });
 
     it("should throw NotFoundError when column does not exist", async () => {
+      // Acceptance: KB01-US1.5 (validation)
       // Given the column does not exist
       setQueryResult([]);
 
       // Then removing a non-existent column should throw NotFoundError
-      expect(ColumnService.remove(999, userId)).rejects.toBeInstanceOf(
+      await expect(ColumnService.remove(999, userId)).rejects.toBeInstanceOf(
         NotFoundError,
       );
+    });
+
+    it("should not remove a column that belongs to a different user", async () => {
+      // Acceptance: KB01-US5.2
+      // Given a column exists but belongs to a different user (query returns empty due to userId mismatch)
+      setQueryResult([]);
+
+      // When another user tries to remove it
+      // Then NotFoundError should be thrown because the AND(id, userId) query returns no rows
+      await expect(
+        ColumnService.remove(1, "different-user-id"),
+      ).rejects.toBeInstanceOf(NotFoundError);
     });
   });
 });

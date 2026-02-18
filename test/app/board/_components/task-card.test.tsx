@@ -20,6 +20,7 @@ describe("TaskCard", () => {
   // Task display with dropdown menu for move and delete actions
   describe("rendering", () => {
     it("should display the task title", () => {
+      // Acceptance: KB01-US2.2
       // Given a task card is rendered with a task that has no description
       render(
         <TaskCard
@@ -36,6 +37,7 @@ describe("TaskCard", () => {
     });
 
     it("should display description when present", () => {
+      // Acceptance: KB01-US2.2
       // Given a task card is rendered with a task that has a description
       render(
         <TaskCard
@@ -56,6 +58,7 @@ describe("TaskCard", () => {
 
   describe("dropdown actions", () => {
     it("should call onDelete when delete is clicked", async () => {
+      // Acceptance: KB01-US2.3
       // Given a task card is rendered with an onDelete callback
       const onDelete = mock();
       render(
@@ -77,6 +80,7 @@ describe("TaskCard", () => {
     });
 
     it("should show move options for other columns", async () => {
+      // Acceptance: KB01-US3.1
       // Given a task card is rendered in column 1 (To Do)
       render(
         <TaskCard
@@ -98,6 +102,7 @@ describe("TaskCard", () => {
     });
 
     it("should call onMove when move option is clicked", async () => {
+      // Acceptance: KB01-US3.2
       // Given a task card is rendered with an onMove callback
       const onMove = mock();
       render(

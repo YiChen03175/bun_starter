@@ -38,7 +38,7 @@ export function ColumnCreateForm({ onAdd }: ColumnCreateFormProps) {
           className="h-8 text-sm"
         />
         <Button type="submit" size="sm" disabled={submitting}>
-          {submitting ? "..." : "Add"}
+          {submitting ? "Adding..." : "Add"}
         </Button>
       </form>
     </div>

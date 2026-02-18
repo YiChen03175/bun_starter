@@ -51,6 +51,9 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 ```
 scripts/
 └── seed.ts                       # Database seed script
+specs/
+└── <XX##-feature-name>/          # Feature specifications (e.g., KB01-kanban-board)
+    └── spec.md                   # Acceptance scenarios, entities, decisions
 src/
 ├── app/                        # Next.js App Router pages
 │   ├── api/[[...slugs]]/       # Elysia catch-all API route
@@ -91,7 +94,10 @@ test/
 │   ├── mock-db.ts              # Drizzle mock via Proxy + setQueryResult()
 │   └── mock-logger.ts          # Suppresses logger output in tests
 ├── fixtures/                   # Shared mock data
-├── server/modules/<feature>/   # Backend tests (controller + service)
+├── server/
+│   ├── errors/                 # Error handler + custom error tests
+│   ├── modules/<feature>/      # Backend tests (controller + service)
+│   └── plugins/                # Plugin tests (auth, proxy)
 └── app/<route>/_components/    # Frontend component tests
 ```
 
@@ -192,10 +198,11 @@ bun test --watch      # Run tests in watch mode
 
 Tests mirror the source structure under `test/`. Backend tests use `createTestClient()` from `test/helpers/elysia.ts` for controller tests and `setQueryResult()` from `test/helpers/mock-db.ts` for service tests. Frontend tests use React Testing Library. Shared mock data lives in `test/fixtures/`.
 
-All tests follow **BDD style** (Given-When-Then) without Cucumber — use descriptive `// Given`, `// When`, `// Then` comments as behavior specs and `"should [outcome] when [condition]"` naming:
+All tests follow **BDD style** (Given-When-Then) without Cucumber — use descriptive `// Given`, `// When`, `// Then` comments as behavior specs and `"should [outcome] when [condition]"` naming. Each test starts with an `// Acceptance: XX##-USx.x` comment (feature code prefix + bare spec ID) linking it back to the spec's acceptance scenario:
 
 ```typescript
 it("should return the created column", async () => {
+  // Acceptance: KB01-US1.3
   // Given valid column data
   setQueryResult([mockColumn]);
 

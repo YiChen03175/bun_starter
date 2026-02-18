@@ -81,6 +81,7 @@ describe("KanbanColumn", () => {
   // Single kanban column — displays tasks with pagination, handles task CRUD and move
   describe("rendering", () => {
     it("should display the column title", async () => {
+      // Acceptance: KB01-US1.2
       // Given + When the kanban column is rendered for "To Do"
       renderColumn();
 
@@ -89,6 +90,7 @@ describe("KanbanColumn", () => {
     });
 
     it("should render tasks after loading", async () => {
+      // Acceptance: KB01-US2.1
       // Given + When the kanban column is rendered with one task
       renderColumn();
 
@@ -99,6 +101,7 @@ describe("KanbanColumn", () => {
     });
 
     it("should show empty state when no tasks exist", async () => {
+      // Acceptance: KB01-US2.1
       // Given + When the kanban column is rendered with an empty task list
       renderColumn({
         getTasks: () =>
@@ -112,6 +115,7 @@ describe("KanbanColumn", () => {
     });
 
     it("should render the add task form", () => {
+      // Acceptance: KB01-US2.1
       // Given + When the kanban column is rendered
       renderColumn();
 
@@ -122,6 +126,7 @@ describe("KanbanColumn", () => {
 
   describe("creating a task", () => {
     it("should call create mutation when form is submitted", async () => {
+      // Acceptance: KB01-US2.1
       // Given the kanban column is rendered with a mock create endpoint
       const postMock = mock(() => Promise.resolve({ data: {}, error: null }));
       const mockClient = {
@@ -176,6 +181,7 @@ describe("KanbanColumn", () => {
 
   describe("task actions", () => {
     it("should call move mutation when move option is clicked", async () => {
+      // Acceptance: KB01-US3.2
       // Given the kanban column is rendered with a mock move endpoint
       const putMock = mock(() => Promise.resolve({ data: {}, error: null }));
       const mockClient = {
@@ -222,6 +228,7 @@ describe("KanbanColumn", () => {
     });
 
     it("should call delete mutation when delete option is clicked", async () => {
+      // Acceptance: KB01-US2.3
       // Given the kanban column is rendered with a mock delete endpoint
       const deleteMock = mock(() => Promise.resolve({ data: {}, error: null }));
       const mockClient = {
@@ -270,6 +277,7 @@ describe("KanbanColumn", () => {
 
   describe("pagination", () => {
     it("should paginate forward and backward", async () => {
+      // Acceptance: KB01-US2.5
       // Given 11 tasks exist and the kanban column shows the first page of 10
       const tasks = Array.from({ length: 11 }, (_, i) => ({
         id: i + 1,

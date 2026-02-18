@@ -1,20 +1,9 @@
 import { describe, expect, it, mock } from "bun:test";
 import { NotFoundError } from "elysia";
-import { mockSession, mockUser } from "test/fixtures/auth";
 import { mockTask } from "test/fixtures/board";
 import { createTestClient } from "test/helpers/elysia";
+import "test/helpers/mock-auth";
 import "test/helpers/mock-logger";
-
-mock.module("@/server/auth", () => ({
-  auth: {
-    handler: () => new Response(null, { status: 404 }),
-    api: {
-      getSession: mock(() =>
-        Promise.resolve({ user: mockUser, session: mockSession }),
-      ),
-    },
-  },
-}));
 
 const columnServiceMock = {
   list: mock(() => []),
@@ -62,6 +51,7 @@ describe("Task Controller", () => {
   // Authenticated CRUD operations on tasks — all routes require { auth: true }
   describe("GET /api/tasks", () => {
     it("should return tasks with total count", async () => {
+      // Acceptance: KB01-US2.1
       // When an authenticated user sends GET /api/tasks
       const res = await client.request("/api/tasks");
 
@@ -73,6 +63,7 @@ describe("Task Controller", () => {
     });
 
     it("should pass query params to service when filtering", async () => {
+      // Acceptance: KB01-US2.5
       // When an authenticated user sends GET /api/tasks with column and pagination filters
       const res = await client.request(
         "/api/tasks?columnId=1&limit=10&offset=0",
@@ -90,6 +81,7 @@ describe("Task Controller", () => {
 
   describe("POST /api/tasks", () => {
     it("should create a task when data is valid", async () => {
+      // Acceptance: KB01-US2.1
       // When an authenticated user creates a task with title and column
       const res = await client.json("/api/tasks", {
         title: "New task",
@@ -103,6 +95,7 @@ describe("Task Controller", () => {
     });
 
     it("should create a task with description when provided", async () => {
+      // Acceptance: KB01-US2.2
       // When an authenticated user creates a task with a title and description
       const res = await client.json("/api/tasks", {
         title: "New task",
@@ -119,6 +112,7 @@ describe("Task Controller", () => {
     });
 
     it("should return 422 when title is empty", async () => {
+      // Acceptance: KB01-US2.4
       // When an authenticated user creates a task with an empty title
       const res = await client.json("/api/tasks", {
         title: "",
@@ -130,6 +124,7 @@ describe("Task Controller", () => {
     });
 
     it("should return 422 when columnId is missing", async () => {
+      // Acceptance: KB01-US2.1 (validation)
       // When an authenticated user creates a task without a columnId
       const res = await client.json("/api/tasks", { title: "New task" });
 
@@ -140,6 +135,7 @@ describe("Task Controller", () => {
 
   describe("PUT /api/tasks/:id", () => {
     it("should update the task when it exists", async () => {
+      // Acceptance: KB01-US3.2
       // When an authenticated user updates task 1 with a new title
       const res = await client.json(
         "/api/tasks/1",
@@ -153,6 +149,7 @@ describe("Task Controller", () => {
     });
 
     it("should move a task to a different column", async () => {
+      // Acceptance: KB01-US3.2, KB01-US5.2
       // When an authenticated user moves task 1 to column 2
       const res = await client.json("/api/tasks/1", { columnId: 2 }, "PUT");
 
@@ -166,6 +163,7 @@ describe("Task Controller", () => {
     });
 
     it("should return 404 when task does not exist", async () => {
+      // Acceptance: KB01-US3.2 (validation)
       // When an authenticated user tries to update a non-existent task
       const res = await client.json("/api/tasks/999", { title: "Nope" }, "PUT");
 
@@ -176,6 +174,7 @@ describe("Task Controller", () => {
 
   describe("DELETE /api/tasks/:id", () => {
     it("should remove the task when it exists", async () => {
+      // Acceptance: KB01-US2.3, KB01-US5.2
       // When an authenticated user deletes task 1
       const res = await client.request("/api/tasks/1", { method: "DELETE" });
 
@@ -185,6 +184,7 @@ describe("Task Controller", () => {
     });
 
     it("should return 404 when task does not exist", async () => {
+      // Acceptance: KB01-US2.3 (validation)
       // When an authenticated user tries to delete a non-existent task
       const res = await client.request("/api/tasks/999", { method: "DELETE" });
 

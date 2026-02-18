@@ -32,6 +32,7 @@ describe("Column Controller", () => {
   // Authenticated CRUD operations on columns — all routes require { auth: true }
   describe("GET /api/columns", () => {
     it("should return a list of columns", async () => {
+      // Acceptance: KB01-US1.2
       // When an authenticated user sends GET /api/columns
       const res = await client.request("/api/columns");
 
@@ -46,6 +47,7 @@ describe("Column Controller", () => {
 
   describe("POST /api/columns", () => {
     it("should create a column when title is valid", async () => {
+      // Acceptance: KB01-US1.3
       // When an authenticated user creates a column with title "Backlog"
       const res = await client.json("/api/columns", { title: "Backlog" });
 
@@ -60,6 +62,7 @@ describe("Column Controller", () => {
     });
 
     it("should return 422 when title is empty", async () => {
+      // Acceptance: KB01-US1.6
       // When an authenticated user creates a column with an empty title
       const res = await client.json("/api/columns", { title: "" });
 
@@ -70,6 +73,7 @@ describe("Column Controller", () => {
 
   describe("PUT /api/columns/:id", () => {
     it("should update the column when it exists", async () => {
+      // Acceptance: KB01-US1.4
       // When an authenticated user updates column 1 with a new title
       const res = await client.json("/api/columns/1", { title: "Done" }, "PUT");
 
@@ -84,6 +88,7 @@ describe("Column Controller", () => {
     });
 
     it("should update the column position when position is provided", async () => {
+      // Acceptance: KB01-US1.4
       // When an authenticated user updates column 1 with a new position
       const res = await client.json("/api/columns/1", { position: 2 }, "PUT");
 
@@ -97,6 +102,7 @@ describe("Column Controller", () => {
     });
 
     it("should return 404 when column does not exist", async () => {
+      // Acceptance: KB01-US1.4 (validation)
       // When an authenticated user tries to update a non-existent column
       const res = await client.json(
         "/api/columns/999",
@@ -111,6 +117,7 @@ describe("Column Controller", () => {
 
   describe("DELETE /api/columns/:id", () => {
     it("should remove the column when it exists", async () => {
+      // Acceptance: KB01-US1.5, KB01-US5.2
       // When an authenticated user deletes column 1
       const res = await client.request("/api/columns/1", { method: "DELETE" });
 
@@ -120,6 +127,7 @@ describe("Column Controller", () => {
     });
 
     it("should return 404 when column does not exist", async () => {
+      // Acceptance: KB01-US1.5 (validation)
       // When an authenticated user tries to delete a non-existent column
       const res = await client.request("/api/columns/999", {
         method: "DELETE",
