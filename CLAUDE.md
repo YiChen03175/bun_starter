@@ -51,12 +51,19 @@ specs/
 src/
 ├── app/                        # Next.js App Router pages
 │   ├── api/[[...slugs]]/       # Elysia catch-all API route
-│   ├── page.tsx                # Home page (server component)
-│   └── <route>/
-│       ├── page.tsx            # Route page (server component shell)
-│       └── _components/        # Page-specific client components
+│   ├── (public)/               # Route group for unauthenticated pages (no sidebar)
+│   │   ├── page.tsx            # Home page (server component)
+│   │   ├── login/              # Login page + components
+│   │   └── signup/             # Signup page + components
+│   └── (authenticated)/        # Route group for authenticated pages (with sidebar)
+│       ├── layout.tsx          # Sidebar + SidebarInset layout
+│       ├── _components/        # Shared authenticated components (app-sidebar, nav-user)
+│       └── <route>/
+│           ├── page.tsx        # Route page (server component shell)
+│           └── _components/    # Page-specific client components
 ├── components/ui/              # Shadcn UI components
 ├── env.ts                      # Validated env vars (import from @/env)
+├── hooks/                      # Custom React hooks (e.g., use-mobile)
 ├── lib/
 │   ├── auth-client.ts          # Better Auth client (signIn, signUp, signOut, useSession)
 │   ├── eden.ts                 # Eden treaty client + React Query hooks (see comments in file)
@@ -86,11 +93,13 @@ test/
 │   └── types.d.ts              # Bun matcher augmentation for jest-dom + __BunRequest global
 ├── helpers/                    # Test utilities (elysia, mock-db, mock-auth, eden-query)
 ├── fixtures/                   # Shared mock data (board.ts, auth.ts)
+├── hooks/                      # Hook tests
 ├── server/
 │   ├── errors/                 # Error handler + custom error tests
 │   ├── modules/<feature>/      # Backend tests (controller + service)
 │   └── plugins/                # Plugin tests (auth, proxy)
-└── app/<route>/_components/    # Frontend component tests
+├── app/(public)/               # Public page tests
+└── app/(authenticated)/        # Authenticated page + component tests
 ```
 
 ## Core Principles
@@ -102,6 +111,8 @@ All data is typed at the boundary where it is defined and inferred everywhere el
 
 ### II. Spec-Driven Development
 Every feature begins with a spec (`specs/<XX##-feature-name>/spec.md`) containing user stories, acceptance scenarios, key entities, and key decisions. Each spec declares a **feature code** (e.g., `KB01`) in its header. Acceptance IDs within a spec use format (`US1.1`, `CC1`). Tests link back to acceptance scenarios via `// Acceptance: KB01-US1.1` comments (prefixed with the feature code for global uniqueness), keeping spec and tests in sync. See [Feature Development](#feature-development-spec-driven) for the full workflow.
+
+**Spec–code–test triad (NON-NEGOTIABLE)**: Before adding a feature, fixing a bug, or changing behavior, ALWAYS check existing specs first. Determine whether an existing spec needs a new or updated acceptance scenario, or whether a new spec is required. Implementation, spec, and tests MUST stay in sync — every behavioral change flows through all three: spec defines it, code implements it, tests verify it. Skipping the spec check leads to undocumented behavior that drifts from the project's source of truth.
 
 ### III. Validation Gates (NON-NEGOTIABLE)
 `bun run validate` (lint + type-check + tests) MUST pass after every task. No code may be pushed that fails these gates. Schema changes MUST produce a migration file (`db:generate`) before being considered complete — `db:push` is for prototyping only.
@@ -118,9 +129,9 @@ The project enforces consistent patterns: path aliases (`@/*` for `src/*`), modu
 
 When developing a new feature or modifying an existing one, follow this spec-driven workflow. The spec and tests together form the **single source of truth** for feature behavior.
 
-1. **Clarify requirements** — Read the feature request carefully. Ask clarifying questions before writing any code. Identify affected layers (API, service, frontend, schema).
+1. **Clarify requirements** — Read the feature request carefully. Ask clarifying questions before writing any code. Identify affected layers (API, service, frontend, schema). A single user request may involve multiple distinct concerns — identify them early and create separate specs for each (e.g., a sidebar and a home page are separate specs even if requested together).
 
-2. **Create/modify the spec** — Write the spec following [Principle II](#ii-spec-driven-development). See `specs/.templates/spec.template.md` for the template. The spec is reviewed during **plan mode** before implementation begins.
+2. **Create/modify the spec** — Write the spec following [Principle II](#ii-spec-driven-development). See `specs/.templates/spec.template.md` for the template. The spec is reviewed during **plan mode** before implementation begins. Specs MUST be decoupled: each spec should be removable without breaking functionality defined in other specs. A spec may **reference** another spec's acceptance IDs (e.g., "surfaces AU01-US5.2") but must not redefine behavior owned by another spec.
 
 3. **Implement the feature** — Write the production code (schema, service, controller, frontend components) following existing conventions.
 
@@ -158,10 +169,12 @@ When developing a new feature or modifying an existing one, follow this spec-dri
 5. Add database table in `src/server/db/schema.ts` if needed, then `bun run db:push`
 
 ### Adding a New Page
-1. Create `src/app/<route>/page.tsx` — server component shell
-2. Create `src/app/<route>/_components/` — colocated client components
+- **Public pages** (no auth): Create under `src/app/(public)/<route>/`
+- **Authenticated pages** (with sidebar): Create under `src/app/(authenticated)/<route>/`
+1. Create `page.tsx` — server component shell
+2. Create `_components/` — colocated client components
 3. Keep server/client boundary clear: page.tsx is server, interactive parts in `_components/`
-4. Add tests in `test/app/<route>/_components/`
+4. Add tests mirroring the source structure under `test/app/`
 
 ### Schema Migration Workflow
 - Check whether you're on **local Postgres** or **cloud Neon** — the workflow differs:
@@ -262,7 +275,7 @@ Before/after example:
   4. **Schema**: Add `userId` column with `.references(() => user.id, { onDelete: "cascade" })` and an index
 
 ### Environment Variables
-- **Centralized validation**: All env vars are defined in @src/env.ts using `t3-oss/env-nextjs` + Zod
+- **Centralized validation**: All env vars are defined in `src/env.ts` using `t3-oss/env-nextjs` + Zod
 - **Import from `@/env`** — never use `process.env` directly in application code (exception: `drizzle.config.ts` runs outside Next.js)
 - **Adding a new env var**: add schema in `src/env.ts`, add to `runtimeEnv`, update `.env.example` and `.env.test`
 - **Server/client boundary**: server vars are only accessible in server code; client vars must be prefixed with `NEXT_PUBLIC_`
@@ -289,7 +302,6 @@ Before/after example:
 - Use `$inferInsert` / `$inferSelect` for TypeScript types
 - Set up Postgres locally via Docker: `docker compose up -d` (uses `compose.yaml` in project root)
 - Set `NEON_LOCAL=true` in `.env` to use `postgres.js` (direct TCP) instead of Neon HTTP driver
-- `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/main` (default local credentials)
 - To switch to cloud Neon: unset `NEON_LOCAL` and set `DATABASE_URL` to your cloud connection string
 - **No branching support** — local Postgres is a single database; branching is a Neon cloud-only feature
 
@@ -303,7 +315,7 @@ Before/after example:
 - **Async operations**: `"use client"` components should handle loading/disabled states (e.g., `submitting` state in forms)
 - Use `cn()` from `@/lib/utils` for conditional classNames (not template literal concatenation)
 - **`_components/` convention** — colocate page-specific components in a private folder next to the page
-- **Shadcn uses Base UI primitives** (`base-vega` style in `components.json`) — no Radix UI. Use `render` prop for polymorphic rendering (e.g., `<Button render={<Link href="/x" />}>Label</Button>`), not `asChild`
+- **Shadcn uses Base UI primitives** (`base-vega` style in `components.json`) — no Radix UI. Use `render` prop for polymorphic rendering (e.g., `<Button nativeButton={false} render={<Link href="/x" />}>Label</Button>`), not `asChild`. The `render` prop **replaces** the default element (no wrapping/nesting). Add `nativeButton={false}` only when the rendered element is **not** a native `<button>` (e.g., `<Link>`, `<div>`).
 - Use `bunx --bun shadcn@latest add <component>` to add new Shadcn components (installs only what you need)
 - `src/components/ui/` is generated code — Biome (linting, formatting, import sorting) and test coverage are all disabled for this folder
 - Biome handles formatting and linting — run `bun run lint:fix` before committing
@@ -324,6 +336,7 @@ Before/after example:
 - **Verify mutation payloads, not just invocation.** `toHaveBeenCalled()` on a mock only proves it was invoked — a bug changing the payload goes undetected. Use `toHaveBeenCalledWith(expectedPayload)` on post/put mocks. Delete mocks that take no args are fine with `toHaveBeenCalled()`.
 - **Use rendered elements, not manual DOM construction.** Don't use `document.createElement` to fabricate elements for `fireEvent` — use real elements from `render()` or add a sibling in the JSX. If you need `relatedTarget` for blur behavior, render a sibling button and `userEvent.click` it instead of creating a fake element and calling `fireEvent.blur`.
 - **Always `await` the `.rejects` chain.** `await expect(promise).rejects.toBeInstanceOf(Error)` is required — without `await`, the assertion is a floating promise that silently passes (false positive). TypeScript shows a `ts(80007)` hint ("await has no effect") because bun-types declares `.rejects` matchers as returning `void`, but at runtime they return a `Promise`. The hint is a type definition gap — ignore it, the `await` is necessary.
+- **Export the full interface in `mock.module()` calls.** Bun's mock module cache persists across test files. If test A mocks `@/lib/auth-client` with only `{ signOut }` and test B needs `{ signIn }`, test B fails when it runs after A. Always export every named export the real module provides, even if the current test doesn't use them all.
 - **Assert on user-visible changes for async state transitions.** When testing intermediate states (e.g., button disabled during submission), query by the visible label change (`getByRole("button", { name: "Adding..." })`) and use `waitFor` to assert the final state. Never use manual `setTimeout` flushes or raw `act()` — RTL's `waitFor`/`findBy` wrap `act()` automatically and avoid the "not wrapped in act" warning.
 
 ## Self-update (CLAUDE.md)

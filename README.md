@@ -57,12 +57,19 @@ specs/
 src/
 ├── app/                        # Next.js App Router pages
 │   ├── api/[[...slugs]]/       # Elysia catch-all API route
-│   ├── page.tsx                # Home page (server component)
-│   └── <route>/
-│       ├── page.tsx            # Route page (server component shell)
-│       └── _components/        # Page-specific client components
+│   ├── (public)/               # Route group for unauthenticated pages (no sidebar)
+│   │   ├── page.tsx            # Home page (server component)
+│   │   ├── login/              # Login page + components
+│   │   └── signup/             # Signup page + components
+│   └── (authenticated)/        # Route group for authenticated pages (with sidebar)
+│       ├── layout.tsx          # Sidebar + SidebarInset layout
+│       ├── _components/        # Shared authenticated components (app-sidebar, nav-user)
+│       └── <route>/
+│           ├── page.tsx        # Route page (server component shell)
+│           └── _components/    # Page-specific client components
 ├── components/ui/              # Shadcn UI components
 ├── env.ts                      # Validated env vars (@t3-oss/env-nextjs + Zod)
+├── hooks/                      # Custom React hooks (e.g., use-mobile)
 ├── lib/
 │   ├── auth-client.ts          # Better Auth React client (signIn, signUp, signOut, useSession)
 │   ├── eden.ts                 # Eden treaty client + React Query hooks (see comments in file)
@@ -94,11 +101,13 @@ test/
 │   ├── mock-db.ts              # Drizzle mock via Proxy + setQueryResult()
 │   └── mock-logger.ts          # Suppresses logger output in tests
 ├── fixtures/                   # Shared mock data
+├── hooks/                      # Hook tests
 ├── server/
 │   ├── errors/                 # Error handler + custom error tests
 │   ├── modules/<feature>/      # Backend tests (controller + service)
 │   └── plugins/                # Plugin tests (auth, proxy)
-└── app/<route>/_components/    # Frontend component tests
+├── app/(public)/               # Public page tests
+└── app/(authenticated)/        # Authenticated page + component tests
 ```
 
 ## Database
@@ -236,9 +245,12 @@ A `.env.test` file sets `LOG_LEVEL=silent` to suppress log output during tests.
 
 ### New page
 
-1. Create `src/app/<route>/page.tsx` — server component shell
-2. Create `src/app/<route>/_components/` — colocated client components
-3. Add tests in `test/app/<route>/_components/`
+- **Public pages** (no auth): Create under `src/app/(public)/<route>/`
+- **Authenticated pages** (with sidebar): Create under `src/app/(authenticated)/<route>/`
+1. Create `page.tsx` — server component shell
+2. Create `_components/` — colocated client components
+3. Keep server/client boundary clear: page.tsx is server, interactive parts in `_components/`
+4. Add tests mirroring the source structure under `test/app/`
 
 ## Advanced: Neon Local
 

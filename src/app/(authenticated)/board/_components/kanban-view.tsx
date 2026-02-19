@@ -17,7 +17,10 @@ export function KanbanView({
   onDeleteColumn,
 }: KanbanViewProps) {
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4">
+    <div
+      data-testid="kanban-scroll-area"
+      className="flex flex-1 gap-4 overflow-x-auto px-1 pb-4"
+    >
       {columns.map((column) => (
         <KanbanColumn
           key={column.id}

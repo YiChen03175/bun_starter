@@ -16,7 +16,9 @@ mock.module("@/lib/eden", () => ({
   useEdenClient,
 }));
 
-const { BoardShell } = await import("@/app/board/_components/board-shell");
+const { BoardShell } = await import(
+  "@/app/(authenticated)/board/_components/board-shell"
+);
 
 const simpleColumns = defaultColumns.map((c) => ({
   id: c.id,
@@ -260,6 +262,68 @@ describe("BoardShell", () => {
       await waitFor(() => {
         expect(deleteMock).toHaveBeenCalled();
       });
+    });
+  });
+
+  describe("board layout", () => {
+    it("should render the title and view toggle outside the columns scroll area", async () => {
+      // Acceptance: KB01-US6.2
+      // Given the board is rendered with columns loaded
+      renderBoardShell();
+      await waitFor(() => {
+        expect(screen.getByText("To Do")).toBeInTheDocument();
+      });
+
+      // Then the title and view toggle should not be inside the scroll container
+      const header = screen.getByTestId("board-header");
+      const scrollArea = screen.getByTestId("kanban-scroll-area");
+      expect(header).toBeInTheDocument();
+      expect(scrollArea).toBeInTheDocument();
+      expect(header.contains(scrollArea)).toBe(false);
+      expect(scrollArea.contains(header)).toBe(false);
+    });
+
+    it("should render columns inside a horizontally scrollable container", async () => {
+      // Acceptance: KB01-US6.1
+      // Given the board is rendered in kanban view
+      renderBoardShell();
+      await waitFor(() => {
+        expect(screen.getByText("To Do")).toBeInTheDocument();
+      });
+
+      // Note: happy-dom has no layout engine; we verify the CSS class as a proxy for scroll behavior
+      // Then columns should be inside a container with horizontal overflow scrolling
+      const scrollArea = screen.getByTestId("kanban-scroll-area");
+      expect(scrollArea.classList.contains("overflow-x-auto")).toBe(true);
+    });
+
+    it("should stretch the scroll area to fill remaining viewport height", async () => {
+      // Acceptance: KB01-US6.4
+      // Given the board is rendered with columns loaded
+      renderBoardShell();
+      await waitFor(() => {
+        expect(screen.getByText("To Do")).toBeInTheDocument();
+      });
+
+      // Note: happy-dom has no layout engine; we verify the CSS class as a proxy for layout behavior
+      // Then the scroll container should fill the remaining viewport height
+      const scrollArea = screen.getByTestId("kanban-scroll-area");
+      expect(scrollArea.classList.contains("flex-1")).toBe(true);
+    });
+
+    it("should add padding to prevent focus outlines from being clipped", async () => {
+      // Acceptance: KB01-US6.3
+      // Given the board is rendered with columns loaded
+      renderBoardShell();
+      await waitFor(() => {
+        expect(screen.getByText("To Do")).toBeInTheDocument();
+      });
+
+      // Note: happy-dom has no layout engine; we verify the CSS class as a proxy for visual behavior
+      // Then the scroll container should have padding so outlines on edge columns are not clipped
+      const scrollArea = screen.getByTestId("kanban-scroll-area");
+      expect(scrollArea.classList.contains("px-1")).toBe(true);
+      expect(scrollArea.classList.contains("pb-4")).toBe(true);
     });
   });
 });

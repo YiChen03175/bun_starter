@@ -1,19 +1,27 @@
 ---
 name: review-staged
-description: Review staged or all uncommitted changes for bugs, best practices, and CLAUDE.md compliance. Use when you want a code review before committing.
+description: Review staged or all uncommitted changes for bugs, correctness, spec-code-test triad compliance, and CLAUDE.md adherence. Use before committing.
 argument-hint: "[staged|all]"
 disable-model-invocation: true
 allowed-tools: Bash(git *), Bash(bun run validate), Read, Grep, Glob, Task
 ---
 
-Review uncommitted code changes for bugs, best practices, documentation consistency, and CLAUDE.md compliance.
+Review uncommitted code changes for bugs, correctness, spec-code-test triad compliance, and CLAUDE.md adherence.
+
+## Severity Levels
+
+| Level | Meaning | Examples |
+|-------|---------|---------|
+| **P1** | Must fix before merge — blocks shipping | Data loss or corruption bugs; security vulnerabilities (XSS, injection, secrets exposure); broken auth; missing `await` on `.rejects` assertions; spec-code-test triad violations (undocumented behavior, unverified scenarios, orphaned acceptance IDs); schema change with no migration file; interactive code in a server component; unregistered custom Elysia error |
+| **P2** | Should fix, but may ship as a tracked follow-up | Missing edge-case test coverage; wrong HTTP status codes; cache invalidation gaps; CLAUDE.md convention violations; acceptance comment referencing wrong-but-real ID; stale CLAUDE.md/README.md after a structural change; resource leaks; deprecated React 19 event types |
+| **P3** | Suggestion or nit — take it or leave it | Naming that could be clearer; a simpler expression of the same logic; imprecise inline comment; BDD comment describing mock internals instead of product behavior |
 
 ## Scope
 
 The user specifies the review scope via `$ARGUMENTS`:
 
 - `staged` — review only staged changes (`git diff --cached`)
-- `all` (default if no argument) — review staged + unstaged + untracked files
+- `all` (default if no argument) — staged + unstaged + untracked files
 
 ## Workflow
 
@@ -23,8 +31,8 @@ The user specifies the review scope via `$ARGUMENTS`:
 2. Run the appropriate git commands:
    - **staged**: `git diff --cached` and `git diff --cached --name-only`
    - **all**: `git diff` (unstaged), `git diff --cached` (staged), `git ls-files --others --exclude-standard` (untracked), and the combined name list
-3. Read the full content of every changed/new file (not just the diff) — you need context for pre-existing issues
-4. Read `CLAUDE.md` and `README.md` for project conventions
+3. Read the full content of every changed/new file (not just the diff) — full context is needed to assess pre-existing issues and spec cross-references
+4. Read all spec files under `specs/` — needed by Agent 5 for triad verification
 5. If there are no changes to review, report "No changes found" and stop
 
 ### Step 2: Parallel review (5 Sonnet agents)
@@ -34,91 +42,162 @@ Launch 5 parallel Sonnet agents via the Task tool. Provide each agent with:
 - The full content of changed files
 - The contents of CLAUDE.md and README.md
 - The list of changed file paths
+- **Agent 5 only**: the full contents of all spec files under `specs/`
 
 Each agent focuses on one dimension and returns a list of issues. For each issue, include:
-- `file:line` reference
-- Severity: **high** (bugs, security, data loss, broken functionality) or **medium** (convention violations, missing tests, best practice deviations)
-- Whether it's **new** (introduced by this diff) or **pre-existing** (exists in modified file but not caused by this change)
-- Brief reason it was flagged
+- `file:line` reference (use `spec:<XX##>-<ID>` for spec-side triad issues)
+- Severity: **P1**, **P2**, or **P3** per the table above
+- Whether it is **new** (introduced by this diff) or **pre-existing** (in a modified file but not caused by this change)
+- The concrete reason it was flagged — cite the specific rule, spec ID, or CLAUDE.md section
 
 **Agent 1 — CLAUDE.md / README.md compliance**
-Check all changes against documented conventions, patterns, import rules, naming conventions, and stack decisions in CLAUDE.md and README.md. Flag any inconsistency between what the docs say and what the code does. Also flag if the docs themselves need updating due to the changes.
+Check all changes against documented conventions, patterns, import rules, naming conventions, and stack decisions in CLAUDE.md and README.md.
+
+Flag:
+- Code violating an explicit CLAUDE.md rule (e.g., relative imports instead of `@/*` aliases, `process.env` used directly in application code, `asChild` instead of `render` prop on Shadcn components) → **P1** if runtime-breaking, **P2** if convention-only
+- CLAUDE.md or README.md now stale due to structural or convention changes in this diff (new folder, new command, new pattern) → **P2**
+- Inaccurate inline comments given the change → **P3**
 
 **Agent 2 — Bug scan**
-Shallow scan of the diff for obvious bugs: type safety issues, unsafe casts, logic errors, race conditions, security risks (injection, XSS, CSRF, secrets exposure), missing error handling, resource leaks. Focus on high-impact bugs. Skip issues that a linter, typechecker, or compiler would catch — those are handled by `bun run validate`.
+Shallow scan of the diff for concrete, demonstrable bugs that survive `bun run validate`.
+
+Flag:
+- Data loss, corruption, or silent failures → **P1**
+- Security vulnerabilities: injection, XSS, CSRF, hardcoded secrets, unguarded auth paths → **P1**
+- Logic errors: off-by-one, wrong comparison operator, unreachable error handler, missing `await` on async calls → **P1**
+- Resource leaks: event listeners or subscriptions added but never cleaned up → **P2**
+- Broad error swallowing (`catch(() => {})`) with no logging or re-throw → **P2**
+
+Skip anything `tsc --noEmit` or Biome would catch.
 
 **Agent 3 — Testing quality**
-Review any new or modified test files. Check that:
-- Tests actually exercise the behavior (not just pass trivially)
-- Both happy path and error cases are covered
-- Mocking is appropriate (not bypassing the thing being tested)
-- Test follows project conventions from CLAUDE.md (test location, helpers, fixtures)
-- No unnecessary `biome-ignore` or lint suppression comments without justification
-- If production code changed but no tests were added/updated, flag it
+Review new and modified test files for correctness and convention compliance.
+
+Flag:
+- Production code with new observable behavior and no corresponding new or updated test → **P1**
+- Test that mocks the module under test → **P1**
+- Missing `await` on `.rejects` assertions (silent false positive per CLAUDE.md) → **P1**
+- Test that passes trivially: asserts a mock was called (`toHaveBeenCalled()`) on a write operation without asserting the payload (`toHaveBeenCalledWith(...)`) → **P2**
+- Missing error-path test for a new error branch in production code → **P2**
+- `biome-ignore` or `// @ts-ignore` in test code without justification comment → **P2**
+- `document.createElement` used for event targets instead of rendered elements (CLAUDE.md testing pitfall) → **P2**
+- BDD `// Given/When/Then` comments describing mock internals rather than product behavior (CLAUDE.md BDD guidelines) → **P3**
+
+Scope: test mechanics and coverage only — acceptance comment traceability is out of scope for this agent.
 
 **Agent 4 — Stack best practices**
-Based on the technologies touched in the diff, check framework-specific best practices:
-- React: hooks rules, proper error boundaries, key props, effect cleanup
-- React Query / TanStack Query: correct cache invalidation, proper query key usage, staleTime/gcTime settings
-- Eden treaty: proper error checking on `{ data, error }` responses, correct use of useEden vs useEdenClient
-- Next.js: server/client component boundary, proper use of "use client", metadata, dynamic imports
-- Elysia: plugin naming, proper status codes, error registration, auth macro usage
-- Drizzle: proper schema types, migration workflow
-- General: no hardcoded secrets, proper env var usage, dependency placement (dependencies vs devDependencies)
+For each framework or library touched in the diff, apply idiomatic best practices.
 
-**Agent 5 — Documentation consistency**
-Check whether the changes introduce new patterns, dependencies, conventions, or structural changes that require documentation updates:
-- New dependencies in package.json should be reflected in README.md Stack section
-- New file patterns or directories should be reflected in Project Structure sections
-- New conventions should be documented in CLAUDE.md
-- Inline code comments should be accurate and not stale
-- README.md and CLAUDE.md should be consistent with each other
+React:
+- Hook rules violation (conditional hook, hook inside loop) → **P1**
+- Missing `key` prop on list elements → **P2**
+- Missing cleanup return in `useEffect` (listeners, subscriptions, timers) → **P2**
 
-### Step 3: Report
+Next.js:
+- Interactive code (event handlers, hooks) in a server component without `"use client"` → **P1**
+- `"use client"` added to a component with no interactivity → **P2**
 
-Collect all issues from the 5 agents, deduplicate, and output:
+React Query / TanStack Query:
+- Missing cache invalidation after a mutation that changes server state → **P2**
+
+Eden treaty:
+- Response used without checking the `error` field → **P2**
+
+Elysia (ref: elysiajs.com/essential/best-practice):
+- Entire Elysia Context object passed to a function instead of destructuring needed values → **P2**
+- Service function depends on Elysia request context (couples business logic to HTTP) → **P2**
+- Plugin missing `{ name: "..." }` option (breaks deduplication) → **P2**
+- Custom error class used but not registered via `.error()` → **P1**
+- Route that should be protected missing `{ auth: true }` → **P1**
+
+Drizzle:
+- Schema change with no corresponding migration file → **P1**
+
+**Agent 5 — Spec-code-test triad verification**
+Verify that the spec-code-test triad (CLAUDE.md Principle II) remains in sync across the diff. Every behavioral change must flow through: spec defines it → code implements it → tests verify it. A break at any edge is a defect.
+
+You have been given the full contents of all spec files under `specs/`. Use the feature code in each spec header (e.g., `Feature Code: KB01`) to map folders to feature codes.
+
+**A. New or changed production code → spec check**
+For each changed non-test, non-infrastructure file (exclude `src/components/ui/`, config files, `src/env.ts`, `src/server/db/schema.ts`):
+1. Identify the behavioral change introduced.
+2. Search the spec corpus for an acceptance scenario covering this behavior.
+3. Flag **P1** if: behavior is new and no spec scenario covers it — cite what the behavior is and why it needs a scenario.
+4. Flag **P2** if: a scenario covers it but the wording has drifted from the implementation — the scenario is stale.
+5. Do NOT flag: refactors with no behavioral change, infrastructure internals, or behavior covered by an existing accurate scenario.
+
+**B. New or changed spec scenarios → test check**
+For each new or modified acceptance scenario in any spec file in the diff:
+1. Search `test/` (including unchanged files) for `// Acceptance: <feature-code>-<scenario-ID>`.
+2. Flag **P1** if: new scenario has no test anywhere in `test/`.
+3. Flag **P2** if: scenario wording changed and existing tests reference behavior that no longer matches the updated wording.
+4. Do NOT flag: scenarios whose spec text explicitly exempts them from unit tests (e.g., "no unit tests needed", "covered implicitly").
+
+**C. Acceptance comments in tests → spec resolution check**
+For each `// Acceptance: <ID>` comment in any test file in the diff:
+1. Parse the feature code and scenario ID (e.g., `KB01` and `US1.3`, or `SB01` and `CC1`).
+2. Locate the matching spec file by scanning `specs/` for `Feature Code: <XX##>`.
+3. Flag **P1** if: no spec file has that feature code (orphaned — spec deleted or ID mistyped).
+4. Flag **P1** if: the feature code resolves but the scenario ID (US1.3, CC1, etc.) does not appear in that spec file.
+5. Flag **P2** if: the ID resolves but the test's Given/When/Then comments clearly describe a different scenario than the spec wording (copy-paste ID error).
+6. Do NOT flag: multiple tests referencing the same ID — this is intentional (service, controller, and component tests all verify the same scenario).
+
+**D. Format compliance for new `it()` blocks**
+For each new `it()` block in any test file in the diff:
+1. Flag **P2** if: the test exercises a behavioral scenario defined in a spec but has no `// Acceptance:` comment as the first line of its body.
+2. Flag **P3** if: the comment exists but uses non-standard format (lowercase, missing feature-code prefix, extra whitespace).
+3. Do NOT flag: `it()` blocks testing loading spinners, skeleton states, error boundary fallbacks, utility helpers, or test infrastructure — these genuinely lack spec scenarios.
+
+### Step 3: Run validation and produce report
+
+Run `bun run validate`. Collect all agent results. Deduplicate (same `file:line` flagged by multiple agents = one issue at the higher severity). Then output:
 
 ---
 
 ## Code Review: [staged|all] changes
 
-### Validate Results
-[Report `bun run validate` output. If all passed: "All checks passed (lint, type-check, tests)."]
+### Validation
+[`bun run validate` output. If all passed: "All checks passed (lint, type-check, tests)." If failed, quote the relevant error lines.]
 
-### Issues in Changed Code
-[List new issues introduced by the diff. For each:]
-1. **[high|medium]** `file:line` — Description (reason: CLAUDE.md says "...", or: bug due to ..., or: missing test for ...)
+### P1 — Must Fix Before Merge
+[Numbered list of all P1 issues. Each entry:]
+1. `file:line` **[new|pre-existing]** — Description. Reason: [cite the rule, spec ID, or CLAUDE.md section]
 
-[If none: "No new issues found."]
+[If none: "None."]
 
-### Pre-existing Issues
-[List pre-existing issues in modified files, not caused by this change. For each:]
-1. **[high|medium]** `file:line` — Description (pre-existing)
+### P2 — Should Fix
+[Numbered list of all P2 issues.]
+1. `file:line` **[new|pre-existing]** — Description. Reason: [cite]
 
-[If none: "No pre-existing issues found."]
+[If none: "None."]
 
-### What Looks Good
-[Brief bullet list of what was reviewed and found correct — e.g., "React Query setup follows documented patterns", "Cache invalidation uses typed query keys", "Tests cover happy path and error cases"]
+### P3 — Suggestions
+[Numbered list of all P3 issues. No new/pre-existing tag needed.]
+1. `file:line` — Description.
+
+[If none: "None."]
 
 ---
 
 ## What to skip
 
-These are NOT real issues — do not flag them:
+These are NOT issues — do not flag them:
 
-- Issues that a linter, typechecker, or compiler would catch (handled by `bun run validate`)
-- Pedantic nitpicks that a senior engineer wouldn't call out
-- General code quality concerns (lack of coverage, vague security worries) unless explicitly required in CLAUDE.md
-- Issues silenced by explicit lint-ignore comments that include a justification
-- Intentional functionality changes clearly related to the broader change
-- Formatting or style issues (handled by Biome)
+- Anything `tsc --noEmit` or Biome would catch (handled by `bun run validate`)
+- Formatting, import ordering, or style managed by Biome
+- Lint-ignore comments that include a justification
+- Refactors with no observable behavioral change (extract function, rename variable, reorganize imports)
+- Speculative concerns: "this could be a problem if..." without evidence it applies here
+- General code quality opinions not grounded in a specific CLAUDE.md rule or the severity table above
+- Triad: loading spinners, skeleton states, error boundary fallbacks, utility/helper test isolation — these rarely have spec scenarios and should not be flagged for missing acceptance comments
+- Triad: pre-existing test files where only an unrelated line was touched (imports reformatted, etc.)
 
 ## Review principles
 
-1. **Review what changed, flag what exists** — new issues are primary; pre-existing issues are listed separately for the user to decide
-2. **Bugs over style** — prioritize correctness, security, and data integrity over formatting
-3. **Trust the toolchain** — don't duplicate linters, type checkers, and CI
-4. **Check docs match code** — new patterns, deps, or conventions need doc updates
-5. **Verify tests are real** — tests must exercise actual behavior, not just pass
-6. **Stack-aware review** — apply framework-specific best practices for the technologies in the diff
-7. **Cite everything** — every issue must reference file:line and the reason it was flagged
+1. **P1s before anything else** — a single P1 can block a merge; identify all P1s before spending effort on P2/P3
+2. **Cite everything** — every issue must reference `file:line` and the specific rule it violates; vague concerns are not issues
+3. **Bugs over convention** — a P1 bug always outranks a P2 convention violation; never inflate P2s to argue urgency
+4. **Trust the toolchain** — do not re-flag what `bun run validate` already catches
+5. **Triad is non-negotiable** — the spec-code-test triad is a core project invariant (CLAUDE.md Principle II); undocumented or unverified behavior is a P1 regardless of how small the change seems
+6. **New issues first** — pre-existing issues are noted for completeness; authors are not expected to fix inherited debt in the same commit
+7. **Surgical P3s** — P3s should be rare and genuinely useful; when uncertain between P2 and P3, default to P3

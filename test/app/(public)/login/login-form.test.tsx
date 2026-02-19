@@ -22,7 +22,9 @@ mock.module("@/lib/auth-client", () => ({
   useSession: mock(() => ({ data: null, isPending: false })),
 }));
 
-const { LoginForm } = await import("@/app/login/_components/login-form");
+const { LoginForm } = await import(
+  "@/app/(public)/login/_components/login-form"
+);
 
 describe("LoginForm", () => {
   beforeEach(() => {

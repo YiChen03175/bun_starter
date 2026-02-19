@@ -91,6 +91,27 @@ Each user's columns and tasks are private — no user can see, modify, or delete
 
 ---
 
+### User Story 6 - Board Layout (Priority: P1)
+
+The board page presents the main content area beside the sidebar. The page title
+and view toggle remain fixed at the top while the kanban columns scroll horizontally
+beneath them. Only the columns area scrolls — the surrounding layout stays stable.
+
+**Why this priority**: Layout issues directly impact usability — double scrollbars
+confuse users, drifting controls are unreachable, and clipped outlines hide focus state.
+
+**Independent Test**: Can be tested by rendering the board and verifying the title bar
+is structurally outside the scrollable columns container.
+
+**Acceptance Scenarios**:
+
+1. **US6.1** — **Given** the board has more columns than fit in the viewport, **When** the user scrolls horizontally, **Then** only the columns area scrolls (no outer page scroll).
+2. **US6.2** — **Given** the board has more columns than fit in the viewport, **When** the user scrolls the columns area, **Then** the page title and view toggle remain fixed at the top.
+3. **US6.3** — **Given** focus or selection outlines are visible on edge columns, **When** the board renders, **Then** the outlines are not clipped by the scroll container.
+4. **US6.4** — **Given** the board columns have minimal content (empty or few tasks), **When** the user hovers anywhere below the columns within the content area, **Then** horizontal scrolling still works because the scroll container fills the remaining viewport height.
+
+---
+
 ### Cross-Cutting Concerns
 
 1. **CC1** [edge] — **Given** a form submission is in progress, **When** the user clicks submit again, **Then** the submit button is disabled to prevent duplicate submissions.

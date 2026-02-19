@@ -15,7 +15,9 @@ mock.module("@/lib/eden", () => ({
   useEdenClient,
 }));
 
-const { TableView } = await import("@/app/board/_components/table-view");
+const { TableView } = await import(
+  "@/app/(authenticated)/board/_components/table-view"
+);
 
 const columns = [
   { id: 1, title: "To Do" },

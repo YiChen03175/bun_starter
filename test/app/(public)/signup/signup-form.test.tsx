@@ -25,7 +25,9 @@ mock.module("@/lib/auth-client", () => ({
   useSession: mock(() => ({ data: null, isPending: false })),
 }));
 
-const { SignupForm } = await import("@/app/signup/_components/signup-form");
+const { SignupForm } = await import(
+  "@/app/(public)/signup/_components/signup-form"
+);
 
 async function fillForm(
   overrides: Partial<typeof mockCredentials & { confirmPassword: string }> = {},

@@ -1,7 +1,7 @@
 import { describe, expect, it, mock } from "bun:test";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { TaskCard } from "@/app/board/_components/task-card";
+import { TaskCard } from "@/app/(authenticated)/board/_components/task-card";
 
 const columns = [
   { id: 1, title: "To Do" },

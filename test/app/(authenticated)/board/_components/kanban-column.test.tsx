@@ -15,7 +15,9 @@ mock.module("@/lib/eden", () => ({
   useEdenClient,
 }));
 
-const { KanbanColumn } = await import("@/app/board/_components/kanban-column");
+const { KanbanColumn } = await import(
+  "@/app/(authenticated)/board/_components/kanban-column"
+);
 
 const allColumns = [
   { id: 1, title: "To Do" },
