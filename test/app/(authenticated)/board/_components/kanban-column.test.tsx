@@ -8,8 +8,8 @@ import {
   useEdenClient,
 } from "test/helpers/eden-query";
 
-mock.module("@/lib/eden", () => ({
-  api: {},
+mock.module("@/lib/eden", () => ({ api: {} }));
+mock.module("@/lib/eden-query", () => ({
   EdenProvider,
   useEden,
   useEdenClient,
@@ -19,7 +19,9 @@ const { KanbanColumn } = await import(
   "@/app/(authenticated)/board/_components/kanban-column"
 );
 
-const allColumns = [
+import type { SelectColumn } from "@/server/db/schema";
+
+const allColumns: Pick<SelectColumn, "id" | "title">[] = [
   { id: 1, title: "To Do" },
   { id: 2, title: "In Progress" },
   { id: 3, title: "Completed" },

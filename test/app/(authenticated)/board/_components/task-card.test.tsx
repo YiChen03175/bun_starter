@@ -2,15 +2,20 @@ import { describe, expect, it, mock } from "bun:test";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TaskCard } from "@/app/(authenticated)/board/_components/task-card";
+import type { SelectColumn, SelectTask } from "@/server/db/schema";
 
-const columns = [
+const columns: Pick<SelectColumn, "id" | "title">[] = [
   { id: 1, title: "To Do" },
   { id: 2, title: "In Progress" },
   { id: 3, title: "Completed" },
 ];
 
-const task = { id: 1, title: "Implement login", description: null };
-const taskWithDesc = {
+const task: Pick<SelectTask, "id" | "title" | "description"> = {
+  id: 1,
+  title: "Implement login",
+  description: null,
+};
+const taskWithDesc: Pick<SelectTask, "id" | "title" | "description"> = {
   id: 2,
   title: "Write tests",
   description: "Unit and integration tests",

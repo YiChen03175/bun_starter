@@ -8,6 +8,7 @@ coveragePathIgnorePatterns = [
   "src/components/ui/**",
   "src/env.ts",
   "src/server/db/schema.ts",
+  "src/server/db/index.ts",
   "test/setup/**",
   "test/helpers/**",
   "test/fixtures/**",

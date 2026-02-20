@@ -3,12 +3,10 @@ import { NotFoundError } from "elysia";
 import { db } from "@/server/db";
 import { columns, tasks } from "@/server/db/schema";
 import { logger } from "@/server/logger";
+import type { TaskCreate, TaskListQuery, TaskUpdate } from "./model";
 
 export const TaskService = {
-  async list(
-    userId: string,
-    opts: { columnId?: number; limit: number; offset: number },
-  ) {
+  async list(userId: string, opts: TaskListQuery) {
     const where = opts.columnId
       ? and(eq(tasks.userId, userId), eq(tasks.columnId, opts.columnId))
       : eq(tasks.userId, userId);
@@ -27,10 +25,7 @@ export const TaskService = {
     return { tasks: rows, total };
   },
 
-  async create(
-    data: { title: string; columnId: number; description?: string },
-    userId: string,
-  ) {
+  async create(data: TaskCreate, userId: string) {
     // Verify the column belongs to the user
     const [col] = await db
       .select({ id: columns.id })
@@ -55,16 +50,7 @@ export const TaskService = {
     return task;
   },
 
-  async update(
-    id: number,
-    data: {
-      title?: string;
-      description?: string;
-      columnId?: number;
-      position?: number;
-    },
-    userId: string,
-  ) {
+  async update(id: number, data: TaskUpdate, userId: string) {
     // If moving to a different column, verify ownership
     if (data.columnId !== undefined) {
       const [col] = await db

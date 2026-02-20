@@ -79,6 +79,8 @@ export const user = pgTable("user", {
     .notNull(),
 });
 
+export type SelectUser = typeof user.$inferSelect;
+
 export const session = pgTable(
   "session",
   {
@@ -97,6 +99,8 @@ export const session = pgTable(
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );
+
+export type SelectSession = typeof session.$inferSelect;
 
 export const account = pgTable(
   "account",

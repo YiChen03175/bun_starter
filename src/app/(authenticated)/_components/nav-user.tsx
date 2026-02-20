@@ -19,6 +19,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { signOut } from "@/lib/auth-client";
+import type { SelectUser } from "@/server/db/schema";
 
 function getInitials(name: string) {
   return name
@@ -30,7 +31,11 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
-export function NavUser({ user }: { user: { name: string; email: string } }) {
+export function NavUser({
+  user,
+}: {
+  user: Pick<SelectUser, "name" | "email">;
+}) {
   const { isMobile } = useSidebar();
   const router = useRouter();
 

@@ -3,6 +3,7 @@ import { NotFoundError } from "elysia";
 import { db } from "@/server/db";
 import { columns } from "@/server/db/schema";
 import { logger } from "@/server/logger";
+import type { ColumnUpdate } from "./model";
 
 const DEFAULT_COLUMNS = [
   { title: "To Do", position: 0 },
@@ -47,11 +48,7 @@ export const ColumnService = {
     return column;
   },
 
-  async update(
-    id: number,
-    data: { title?: string; position?: number },
-    userId: string,
-  ) {
+  async update(id: number, data: ColumnUpdate, userId: string) {
     const [column] = await db
       .update(columns)
       .set(data)

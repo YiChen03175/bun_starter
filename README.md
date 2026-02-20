@@ -60,7 +60,8 @@ src/
 │   ├── (public)/               # Route group for unauthenticated pages (no sidebar)
 │   │   ├── page.tsx            # Home page (server component)
 │   │   ├── login/              # Login page + components
-│   │   └── signup/             # Signup page + components
+│   │   ├── signup/             # Signup page + components
+│   │   └── specs/              # Spec browser page + components
 │   └── (authenticated)/        # Route group for authenticated pages (with sidebar)
 │       ├── layout.tsx          # Sidebar + SidebarInset layout
 │       ├── _components/        # Shared authenticated components (app-sidebar, nav-user)
@@ -72,7 +73,8 @@ src/
 ├── hooks/                      # Custom React hooks (e.g., use-mobile)
 ├── lib/
 │   ├── auth-client.ts          # Better Auth React client (signIn, signUp, signOut, useSession)
-│   ├── eden.ts                 # Eden treaty client + React Query hooks (see comments in file)
+│   ├── eden.ts                 # Eden treaty client (type-safe, server + client safe)
+│   ├── eden-query.ts           # React Query hooks — client components ONLY (uses createContext)
 │   └── utils.ts                # Shadcn cn() helper
 ├── proxy.ts                    # Next.js middleware (auth redirects)
 └── server/

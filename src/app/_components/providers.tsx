@@ -3,7 +3,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { api, EdenProvider } from "@/lib/eden";
+import { api } from "@/lib/eden";
+import { EdenProvider } from "@/lib/eden-query";
 
 const ReactQueryDevtools = dynamic(
   () =>

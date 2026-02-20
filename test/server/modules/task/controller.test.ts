@@ -2,6 +2,11 @@ import { describe, expect, it, mock } from "bun:test";
 import { NotFoundError } from "elysia";
 import { mockTask } from "test/fixtures/board";
 import { createTestClient } from "test/helpers/elysia";
+import type {
+  TaskCreate,
+  TaskListQuery,
+  TaskUpdate,
+} from "@/server/modules/task/model";
 import "test/helpers/mock-auth";
 import "test/helpers/mock-logger";
 
@@ -17,20 +22,15 @@ mock.module("@/server/modules/column/service", () => ({
 }));
 
 const serviceMock = {
-  list: mock(
-    (
-      _userId: string,
-      _opts: { columnId?: number; limit: number; offset: number },
-    ) => ({
-      tasks: [mockTask],
-      total: 1,
-    }),
-  ),
-  create: mock((data: Record<string, unknown>, _userId: string) => ({
+  list: mock((_userId: string, _opts: TaskListQuery) => ({
+    tasks: [mockTask],
+    total: 1,
+  })),
+  create: mock((data: TaskCreate, _userId: string) => ({
     ...mockTask,
     ...data,
   })),
-  update: mock((id: number, data: Record<string, unknown>, _userId: string) => {
+  update: mock((id: number, data: TaskUpdate, _userId: string) => {
     if (id === 999) throw new NotFoundError(`Task ${id} not found`);
     return { ...mockTask, ...data };
   }),

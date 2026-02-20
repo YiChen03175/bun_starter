@@ -8,14 +8,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { SelectColumn, SelectTask } from "@/server/db/schema";
 
 interface TaskCardProps {
-  task: {
-    id: number;
-    title: string;
-    description: string | null;
-  };
-  columns: { id: number; title: string }[];
+  task: Pick<SelectTask, "id" | "title" | "description">;
+  columns: Pick<SelectColumn, "id" | "title">[];
   currentColumnId: number;
   onMove: (taskId: number, columnId: number) => void;
   onDelete: (taskId: number) => void;

@@ -2,6 +2,7 @@ import { describe, expect, it, mock } from "bun:test";
 import { NotFoundError } from "elysia";
 import { defaultColumns, mockColumn } from "test/fixtures/board";
 import { createTestClient } from "test/helpers/elysia";
+import type { ColumnUpdate } from "@/server/modules/column/model";
 import "test/helpers/mock-auth";
 import "test/helpers/mock-logger";
 
@@ -11,7 +12,7 @@ const serviceMock = {
     ...mockColumn,
     title,
   })),
-  update: mock((id: number, data: Record<string, unknown>, _userId: string) => {
+  update: mock((id: number, data: ColumnUpdate, _userId: string) => {
     if (id === 999) throw new NotFoundError(`Column ${id} not found`);
     return { ...mockColumn, ...data };
   }),

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useEden, useEdenClient } from "@/lib/eden";
+import { useEden, useEdenClient } from "@/lib/eden-query";
 import { KanbanView } from "./kanban-view";
 import { TableView } from "./table-view";
 import { ViewToggle } from "./view-toggle";

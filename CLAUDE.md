@@ -4,7 +4,7 @@ Full-stack Next.js starter with Elysia API backend, type-safe end-to-end via Ede
 
 ## Stack
 
-- **Runtime**: Bun
+- **Runtime**: Bun (package manager, script runner, test runner); Next.js server runs on Node.js
 - **Framework**: Next.js (App Router, Turbopack)
 - **API**: Elysia (runs inside Next.js API routes)
 - **API Client**: Eden treaty + eden-tanstack-react-query (type-safe, auto-inferred from Elysia)
@@ -54,7 +54,8 @@ src/
 │   ├── (public)/               # Route group for unauthenticated pages (no sidebar)
 │   │   ├── page.tsx            # Home page (server component)
 │   │   ├── login/              # Login page + components
-│   │   └── signup/             # Signup page + components
+│   │   ├── signup/             # Signup page + components
+│   │   └── specs/              # Spec browser page + components
 │   └── (authenticated)/        # Route group for authenticated pages (with sidebar)
 │       ├── layout.tsx          # Sidebar + SidebarInset layout
 │       ├── _components/        # Shared authenticated components (app-sidebar, nav-user)
@@ -66,7 +67,8 @@ src/
 ├── hooks/                      # Custom React hooks (e.g., use-mobile)
 ├── lib/
 │   ├── auth-client.ts          # Better Auth client (signIn, signUp, signOut, useSession)
-│   ├── eden.ts                 # Eden treaty client + React Query hooks (see comments in file)
+│   ├── eden.ts                 # Eden treaty client (type-safe, server + client safe)
+│   ├── eden-query.ts           # React Query hooks — client components ONLY (uses createContext)
 │   └── utils.ts                # Shadcn cn() helper
 ├── proxy.ts                    # Next.js proxy (auth redirects, uses getSessionCookie)
 └── server/
@@ -115,7 +117,7 @@ Every feature begins with a spec (`specs/<XX##-feature-name>/spec.md`) containin
 **Spec–code–test triad (NON-NEGOTIABLE)**: Before adding a feature, fixing a bug, or changing behavior, ALWAYS check existing specs first. Determine whether an existing spec needs a new or updated acceptance scenario, or whether a new spec is required. Implementation, spec, and tests MUST stay in sync — every behavioral change flows through all three: spec defines it, code implements it, tests verify it. Skipping the spec check leads to undocumented behavior that drifts from the project's source of truth.
 
 ### III. Validation Gates (NON-NEGOTIABLE)
-`bun run validate` (lint + type-check + tests) MUST pass after every task. No code may be pushed that fails these gates. Schema changes MUST produce a migration file (`db:generate`) before being considered complete — `db:push` is for prototyping only.
+`bun run validate` (lint + type-check + tests) MUST pass after every task. No code may be pushed that fails these gates. **Always run `bun run lint:fix` before `bun run validate`** — this auto-fixes formatting and import sorting issues upfront, avoiding a wasted validate cycle. Schema changes MUST produce a migration file (`db:generate`) before being considered complete — `db:push` is for prototyping only.
 
 ### IV. Simplicity & YAGNI
 Changes MUST be limited to what is directly requested or clearly necessary. No speculative abstractions, premature helpers, extra configurability, or feature flags for hypothetical future requirements. Three similar lines of code are preferable to a premature abstraction. Error handling and validation MUST only be added at system boundaries (user input, external APIs) — internal code trusts framework guarantees.
@@ -129,9 +131,9 @@ The project enforces consistent patterns: path aliases (`@/*` for `src/*`), modu
 
 When developing a new feature or modifying an existing one, follow this spec-driven workflow. The spec and tests together form the **single source of truth** for feature behavior.
 
-1. **Clarify requirements** — Read the feature request carefully. Ask clarifying questions before writing any code. Identify affected layers (API, service, frontend, schema). A single user request may involve multiple distinct concerns — identify them early and create separate specs for each (e.g., a sidebar and a home page are separate specs even if requested together).
+1. **Clarify requirements** — Read the feature request carefully. **Delegate spec exploration to an Explore sub-agent** (`subagent_type=Explore`) to read all existing specs under `specs/` that relate to the affected feature(s) — this is the first action, before any planning or code. The sub-agent should return a summary of relevant specs, their acceptance scenarios, and any potential conflicts or overlaps with the new request. Ask clarifying questions before writing any code. Identify affected layers (API, service, frontend, schema). A single user request may involve multiple distinct concerns — identify them early and create separate specs for each (e.g., a sidebar and a home page are separate specs even if requested together).
 
-2. **Create/modify the spec** — Write the spec following [Principle II](#ii-spec-driven-development). See `specs/.templates/spec.template.md` for the template. The spec is reviewed during **plan mode** before implementation begins. Specs MUST be decoupled: each spec should be removable without breaking functionality defined in other specs. A spec may **reference** another spec's acceptance IDs (e.g., "surfaces AU01-US5.2") but must not redefine behavior owned by another spec.
+2. **Create/modify the spec** — Write the spec following [Principle II](#ii-spec-driven-development). See `specs/.templates/spec.template.md` for the template. The spec is reviewed during **plan mode** before implementation begins. **Every implementation plan MUST include a "Spec Changes" section** listing which spec files are created/modified and what acceptance scenarios are added/updated — or explicitly state "No spec changes needed" with justification. Specs MUST be decoupled: each spec should be removable without breaking functionality defined in other specs. A spec may **reference** another spec's acceptance IDs (e.g., "surfaces AU01-US5.2") but must not redefine behavior owned by another spec.
 
 3. **Implement the feature** — Write the production code (schema, service, controller, frontend components) following existing conventions.
 
@@ -215,8 +217,8 @@ When developing a new feature or modifying an existing one, follow this spec-dri
 - **Coverage**: Write tests for both happy path and error cases (e.g., not-found returning 404); mock services conditionally (e.g., throw `NotFoundError` for specific IDs) to test error paths through controllers
 - **Test location**: Mirror source structure under `test/` (e.g., `test/server/modules/task/`)
 - **Preload scripts**: Configured in `bunfig.toml` — happy-dom globals (with native Request preservation), jest-dom matchers
-- **Helpers** (`test/helpers/`): `elysia.ts` (test client for Elysia `.handle()`), `mock-db.ts` (Drizzle mock), `mock-auth.ts` (Better Auth mock for controller tests), `mock-logger.ts` (suppresses Pino logs in tests), `eden-query.tsx` (exports test `EdenProvider`/`useEden`/`useEdenClient` for mocking `@/lib/eden`, and `createQueryWrapper(mockClient)` for wrapping components in providers)
-- **Fixtures** (`test/fixtures/`): Shared mock data — import in tests instead of defining inline
+- **Helpers** (`test/helpers/`): `elysia.ts` (test client for Elysia `.handle()`), `mock-db.ts` (Drizzle mock), `mock-auth.ts` (Better Auth mock for controller tests), `mock-logger.ts` (suppresses Pino logs in tests), `eden-query.tsx` (exports test `EdenProvider`/`useEden`/`useEdenClient` for mocking `@/lib/eden-query`, and `createQueryWrapper(mockClient)` for wrapping components in providers)
+- **Fixtures** (`test/fixtures/`): Shared mock data — import in tests instead of defining inline.
 - **Coverage**: `bun run test:coverage` — prints per-file function and line coverage to the terminal; Shadcn UI components (`src/components/ui/`), env validation (`src/env.ts`), DB schema (`src/server/db/schema.ts`), and test infrastructure (`test/setup/`, `test/helpers/`, `test/fixtures/`) are excluded via `coveragePathIgnorePatterns` in `bunfig.toml`
 
 ### Test Style (BDD / Given-When-Then)
@@ -228,6 +230,7 @@ When developing a new feature or modifying an existing one, follow this spec-dri
 - **Pure render tests**: Use `// Given <desc>` + `// Then <desc>` only, or `// Given + When <desc>` for render-as-action
 - **Multi-step tests**: Use multiple `// When <descriptive action>` / `// Then <desc>` pairs
 - **Module-level setup**: Start with `// When <desc>` if the Given is entirely module-level (e.g., controller tests where client is set up at top of file)
+- **Utility/helper function tests**: Pure programmatic helpers (e.g., `diffWords`, string formatters, math utils) do not require BDD style. Use straightforward `it("should ...")` assertions without Given/When/Then comments or acceptance IDs. BDD is for tests that verify product behavior tied to spec scenarios.
 
 ### BDD Comment Guidelines
 1. **Describe business state, not mock setup** — `// Given the user has existing columns` not `// Given the database returns columns`
@@ -306,10 +309,10 @@ Before/after example:
 - **No branching support** — local Postgres is a single database; branching is a Neon cloud-only feature
 
 ### Frontend
-- **Eden client** (`@/lib/eden`) — single file, two usage patterns:
-  - **Server components / non-React**: `import { api } from "@/lib/eden"` — direct `await api.api.columns.get()` calls
-  - **Client components**: `import { useEden, useEdenClient } from "@/lib/eden"` — React Query hooks with automatic caching, deduplication, and background revalidation
-- **Client component data fetching**: Use `useEden()` for typed `queryOptions()`/`mutationOptions()`, `useEdenClient()` for manual mutation functions (e.g., parameterized routes with dynamic IDs)
+- **Eden client** — split into two files to respect the server/client boundary:
+  - **`@/lib/eden`**: Treaty client (`api`) — type-safe, works in both server and client components. `import { api } from "@/lib/eden"`
+  - **`@/lib/eden-query`**: React Query hooks (`useEden`, `useEdenClient`, `EdenProvider`) — **client components only** (uses `createContext` at module scope). `import { useEden, useEdenClient } from "@/lib/eden-query"`
+- **Data fetching in client components**: Always use `useEden()` with `useQuery()`/`useMutation()` from React Query for API calls. Do not manually manage fetch state with `useState` + `useEffect` — React Query handles loading, error, caching, and refetch automatically. Use `useEdenClient()` only for imperative mutation calls (e.g., inside `useMutation({ mutationFn })`) where you need the raw treaty client.
 - **Cache invalidation**: After mutations, invalidate queries via `qc.invalidateQueries({ queryKey: eden.api.<route>.get.queryKey() })`
 - **Server components by default** — only add `"use client"` where interactivity is needed
 - **Async operations**: `"use client"` components should handle loading/disabled states (e.g., `submitting` state in forms)
@@ -329,6 +332,7 @@ Before/after example:
 ## Common Pitfalls
 - **Prefer official CLIs and generators over manual implementation.** When a library provides a CLI to generate config, schema, boilerplate, or migrations, always use it instead of writing by hand. Manual implementations drift silently when the library updates. Examples: `@better-auth/cli generate` for auth schema, `bunx --bun shadcn@latest add` for UI components, `drizzle-kit generate` for migrations.
 - **Check docs for the recommended setup path before implementing.** Libraries often have a specific "getting started" flow (CLI commands, generators, adapters). Follow that flow rather than reverse-engineering the expected output. If the docs say "run this command", run it — don't replicate what the command would produce.
+- **Do NOT import `@/lib/eden-query` in server components.** This module calls `createContext` at module scope (React Query hooks). Use `@/lib/eden` (treaty client only) for server components — it's safe everywhere. The split exists specifically to preserve end-to-end type safety in server components while isolating the client-only React Query integration.
 - **Elysia plugin lifecycle hooks are encapsulated by default.** `onError`, `onBeforeHandle`, etc. defined inside a plugin only affect routes within that plugin instance. They do NOT automatically apply to routes defined on the parent or sibling plugins. To propagate hooks outward, use `{ as: "scoped" }` (one level up) or `{ as: "global" }` (all levels). When writing tests for a plugin's `onError`, define test routes directly on the same Elysia chain after `.use(plugin)` — do NOT put them in a separate `new Elysia()` passed via `.use()`.
 - **Elysia's `t` (TypeBox) is not a static property on the class.** Use `import { t } from "elysia"` as a named export, not `Elysia.t`. The latter is only available on an Elysia instance (e.g., inside `.post()` body schemas), not from the class itself.
 
@@ -338,6 +342,7 @@ Before/after example:
 - **Always `await` the `.rejects` chain.** `await expect(promise).rejects.toBeInstanceOf(Error)` is required — without `await`, the assertion is a floating promise that silently passes (false positive). TypeScript shows a `ts(80007)` hint ("await has no effect") because bun-types declares `.rejects` matchers as returning `void`, but at runtime they return a `Promise`. The hint is a type definition gap — ignore it, the `await` is necessary.
 - **Export the full interface in `mock.module()` calls.** Bun's mock module cache persists across test files. If test A mocks `@/lib/auth-client` with only `{ signOut }` and test B needs `{ signIn }`, test B fails when it runs after A. Always export every named export the real module provides, even if the current test doesn't use them all.
 - **Assert on user-visible changes for async state transitions.** When testing intermediate states (e.g., button disabled during submission), query by the visible label change (`getByRole("button", { name: "Adding..." })`) and use `waitFor` to assert the final state. Never use manual `setTimeout` flushes or raw `act()` — RTL's `waitFor`/`findBy` wrap `act()` automatically and avoid the "not wrapped in act" warning.
+- **Put shared mock data in `test/fixtures/`, not inline in test files.** When multiple test files use the same mock objects or data (e.g., markdown strings, entity records), extract them into a fixture file and import. This avoids duplication, keeps tests focused on behavior, and makes fixture updates propagate to all consumers.
 
 ## Self-update (CLAUDE.md)
 - **When to update**: After any fundamental change — new folder structure, new infrastructure (e.g., test framework, CI), new conventions, new commands, or dependency changes that affect workflow

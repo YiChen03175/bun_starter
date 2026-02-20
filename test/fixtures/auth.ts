@@ -1,4 +1,6 @@
-export const mockUser = {
+import type { SelectSession, SelectUser } from "@/server/db/schema";
+
+export const mockUser: SelectUser = {
   id: "test-user-id",
   name: "Test User",
   email: "test@example.com",
@@ -14,7 +16,7 @@ export const mockCredentials = {
   name: "Test User",
 };
 
-export const mockSession = {
+export const mockSession: SelectSession = {
   id: "test-session-id",
   userId: mockUser.id,
   token: "test-session-token",

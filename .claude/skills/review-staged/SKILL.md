@@ -13,7 +13,7 @@ Review uncommitted code changes for bugs, correctness, spec-code-test triad comp
 | Level | Meaning | Examples |
 |-------|---------|---------|
 | **P1** | Must fix before merge — blocks shipping | Data loss or corruption bugs; security vulnerabilities (XSS, injection, secrets exposure); broken auth; missing `await` on `.rejects` assertions; spec-code-test triad violations (undocumented behavior, unverified scenarios, orphaned acceptance IDs); schema change with no migration file; interactive code in a server component; unregistered custom Elysia error |
-| **P2** | Should fix, but may ship as a tracked follow-up | Missing edge-case test coverage; wrong HTTP status codes; cache invalidation gaps; CLAUDE.md convention violations; acceptance comment referencing wrong-but-real ID; stale CLAUDE.md/README.md after a structural change; resource leaks; deprecated React 19 event types |
+| **P2** | Should fix, but may ship as a tracked follow-up | Missing edge-case test coverage; wrong HTTP status codes; cache invalidation gaps; CLAUDE.md convention violations; acceptance comment referencing wrong-but-real ID; stale CLAUDE.md/README.md after a structural change; resource leaks; deprecated React 19 event types; inline object types for DB/API data instead of schema-derived types (Principle I) |
 | **P3** | Suggestion or nit — take it or leave it | Naming that could be clearer; a simpler expression of the same logic; imprecise inline comment; BDD comment describing mock internals instead of product behavior |
 
 ## Scope
@@ -55,6 +55,10 @@ Check all changes against documented conventions, patterns, import rules, naming
 
 Flag:
 - Code violating an explicit CLAUDE.md rule (e.g., relative imports instead of `@/*` aliases, `process.env` used directly in application code, `asChild` instead of `render` prop on Shadcn components) → **P1** if runtime-breaking, **P2** if convention-only
+- Component prop interface using inline object type `{ id: number; title: string; ... }` for data that originates from the database or API, instead of deriving from `SelectX`/`Pick<SelectX, ...>` (schema types) or `Static<typeof Schema>` (Elysia.t types) → **P2** (CLAUDE.md Principle I: Type Safety End-to-End)
+- Service method parameter using inline type annotation instead of importing the derived type from `./model` → **P2** (CLAUDE.md Principle I)
+- Elysia.t model file defining schemas inline in `.model()` without exporting named schema constants and `Static<typeof>` derived types → **P2** (CLAUDE.md Principle I)
+- Test fixture or mock data object representing a DB entity without a type annotation from `@/server/db/schema` (e.g., `SelectColumn`, `SelectTask`) → **P3**
 - CLAUDE.md or README.md now stale due to structural or convention changes in this diff (new folder, new command, new pattern) → **P2**
 - Inaccurate inline comments given the change → **P3**
 

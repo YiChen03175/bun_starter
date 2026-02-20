@@ -13,10 +13,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useEden, useEdenClient } from "@/lib/eden";
+import { useEden, useEdenClient } from "@/lib/eden-query";
+import type { SelectColumn } from "@/server/db/schema";
 
 interface TableViewProps {
-  columns: { id: number; title: string }[];
+  columns: Pick<SelectColumn, "id" | "title">[];
 }
 
 const PAGE_SIZE = 20;

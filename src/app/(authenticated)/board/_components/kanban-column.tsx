@@ -4,14 +4,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useEden, useEdenClient } from "@/lib/eden";
+import { useEden, useEdenClient } from "@/lib/eden-query";
+import type { SelectColumn } from "@/server/db/schema";
 import { ColumnHeader } from "./column-header";
 import { TaskCard } from "./task-card";
 import { TaskForm } from "./task-form";
 
 interface KanbanColumnProps {
-  column: { id: number; title: string };
-  allColumns: { id: number; title: string }[];
+  column: Pick<SelectColumn, "id" | "title">;
+  allColumns: Pick<SelectColumn, "id" | "title">[];
   onRenameColumn: (id: number, title: string) => void;
   onDeleteColumn: (id: number) => void;
 }

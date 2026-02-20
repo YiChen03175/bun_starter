@@ -3,7 +3,10 @@ import { betterAuthPlugin } from "@/server/plugins/auth";
 import { ColumnModel } from "./model";
 import { ColumnService } from "./service";
 
-export const columnController = new Elysia({ prefix: "/columns" })
+export const columnController = new Elysia({
+  prefix: "/columns",
+  name: "Column.Controller",
+})
   .use(ColumnModel)
   .use(betterAuthPlugin)
   .get("/", ({ user }) => ColumnService.list(user.id), { auth: true })

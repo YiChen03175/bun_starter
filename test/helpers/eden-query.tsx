@@ -2,8 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createEdenTanStackQuery } from "eden-tanstack-react-query";
 import type { ReactNode } from "react";
 
-// Shared test instance — use these to mock @/lib/eden in test files:
-//   mock.module("@/lib/eden", () => ({ api: {}, EdenProvider, useEden, useEdenClient }));
+// Shared test instance — use these to mock @/lib/eden-query in test files:
+//   mock.module("@/lib/eden", () => ({ api: {} }));
+//   mock.module("@/lib/eden-query", () => ({ EdenProvider, useEden, useEdenClient }));
 export const { EdenProvider, useEden, useEdenClient } =
   createEdenTanStackQuery();
 

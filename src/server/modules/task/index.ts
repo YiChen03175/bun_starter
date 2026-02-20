@@ -3,7 +3,10 @@ import { betterAuthPlugin } from "@/server/plugins/auth";
 import { TaskModel } from "./model";
 import { TaskService } from "./service";
 
-export const taskController = new Elysia({ prefix: "/tasks" })
+export const taskController = new Elysia({
+  prefix: "/tasks",
+  name: "Task.Controller",
+})
   .use(TaskModel)
   .use(betterAuthPlugin)
   .get(

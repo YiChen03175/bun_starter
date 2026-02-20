@@ -9,8 +9,8 @@ import {
   useEdenClient,
 } from "test/helpers/eden-query";
 
-mock.module("@/lib/eden", () => ({
-  api: {},
+mock.module("@/lib/eden", () => ({ api: {} }));
+mock.module("@/lib/eden-query", () => ({
   EdenProvider,
   useEden,
   useEdenClient,
@@ -322,7 +322,7 @@ describe("BoardShell", () => {
       // Note: happy-dom has no layout engine; we verify the CSS class as a proxy for visual behavior
       // Then the scroll container should have padding so outlines on edge columns are not clipped
       const scrollArea = screen.getByTestId("kanban-scroll-area");
-      expect(scrollArea.classList.contains("px-1")).toBe(true);
+      expect(scrollArea.classList.contains("p-1")).toBe(true);
       expect(scrollArea.classList.contains("pb-4")).toBe(true);
     });
   });
